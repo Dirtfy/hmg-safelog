@@ -1,0 +1,97 @@
+interface ai/pleos/playground/vehicle/api/Brake : java/lang/Object []
+   M checkBrakePedalStatusCapabilities(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+   M getCurrentBrakePedalStatus(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+   M registerBrakePedalStatus(Lai/pleos/playground/vehicle/listener/BrakePedalStatusListener;)V
+   M unregisterBrakePedalStatus(Lai/pleos/playground/vehicle/listener/BrakePedalStatusListener;)V
+interface ai/pleos/playground/vehicle/api/CarInfo : java/lang/Object []
+   M checkCRNInfoCapabilities(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+   M checkVINInfoCapabilities(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+   M getVINInfo(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+   M getCRNInfo(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+   M getCapabilityInfo(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+interface ai/pleos/playground/vehicle/api/Display : java/lang/Object []
+   M checkTemperatureDisplayUnitCapabilities(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+--
+interface ai/pleos/playground/vehicle/api/Gear : java/lang/Object []
+   M getCurrentGearSelectionState(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+   M registerGearSelection(Lai/pleos/playground/vehicle/listener/GearSelectionListener;)V
+   M unregisterGearSelection(Lai/pleos/playground/vehicle/listener/GearSelectionListener;)V
+class ai/pleos/playground/vehicle/api/HVAC$DefaultImpls : java/lang/Object []
+   M setHvacAc$default(Lai/pleos/playground/vehicle/api/HVAC;Lai/pleos/playground/vehicle/api/model/area/SeatArea;ZLkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+   M setHvacAuto$default(Lai/pleos/playground/vehicle/api/HVAC;Lai/pleos/playground/vehicle/api/model/area/SeatArea;ZLkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+   M setHvacAutoRecirculation$default(Lai/pleos/playground/vehicle/api/HVAC;Lai/pleos/playground/vehicle/api/model/area/SeatArea;ZLkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+   M setHvacDefroster$default(Lai/pleos/playground/vehicle/api/HVAC;Lai/pleos/playground/vehicle/api/model/area/WindowArea;ZLkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+   M setHvacDual$default(Lai/pleos/playground/vehicle/api/HVAC;Lai/pleos/playground/vehicle/api/model/area/SeatArea;ZLkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+   M setHvacFanDirection$default(Lai/pleos/playground/vehicle/api/HVAC;Lai/pleos/playground/vehicle/api/model/area/SeatArea;Lai/pleos/playground/vehicle/constant/control/FanDirectionType;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+   M setHvacFanSpeed$default(Lai/pleos/playground/vehicle/api/HVAC;Lai/pleos/playground/vehicle/api/model/area/SeatArea;ILkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+   M setHvacMaxAc$default(Lai/pleos/playground/vehicle/api/HVAC;Lai/pleos/playground/vehicle/api/model/area/SeatArea;ZLkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+--
+interface ai/pleos/playground/vehicle/api/Safety : java/lang/Object []
+   M checkAirbagCapabilities(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+   M checkAirbagCapabilities(Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;)V
+   M checkAirbagDeployedCapabilities(Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;)V
+   M checkSeatBuckledCapabilities(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+   M checkSeatBuckledCapabilities(Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;)V
+   M checkSeatNotBuckledWarningCapabilities(Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;)V
+   M checkEngineOilLevelStateCapabilities(Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;)V
+   M checkBrakeFluidLevelStateCapabilities(Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;)V
+   M checkTransmissionOilLevelStateCapabilities(Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function1;)V
+   M checkLowWasherFluidWarningStateCapabilities(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+   M checkPowerDownWarningIndicatorCapabilities(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+   M checkTelltalesCapabilities(Lkotlin/jvm/functions/Function1;Lkotlin/jvm/functions/Function1;)V
+--
+interface ai/pleos/playground/vehicle/listener/BrakePedalStatusListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onBrakePedalStatusUpdated(Ljava/lang/Boolean;)V
+interface ai/pleos/playground/vehicle/listener/CruiseControlStateListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onCruiseControlStateUpdated(Lai/pleos/playground/vehicle/constant/control/CruiseControl;)V
+interface ai/pleos/playground/vehicle/listener/CruiseControlTargetSpeedListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onCruiseControlTargetSpeedUpdated(Ljava/lang/Float;)V
+interface ai/pleos/playground/vehicle/listener/DistanceDrivenListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onDistanceDrivenUpdated(Ljava/lang/Float;)V
+interface ai/pleos/playground/vehicle/listener/DoorLockStateListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onDoorLockStateUpdated(Ljava/lang/Boolean;)V
+interface ai/pleos/playground/vehicle/listener/DoorPositionListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onPositionUpdated(Ljava/lang/Integer;)V
+interface ai/pleos/playground/vehicle/listener/DrivingModeStateListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+--
+interface ai/pleos/playground/vehicle/listener/GearSelectionListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onSelected(Lai/pleos/playground/vehicle/constant/control/VehicleGear;)V
+interface ai/pleos/playground/vehicle/listener/GloveBoxLockStateListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onGloveBoxLockStateUpdated(Ljava/lang/Boolean;)V
+interface ai/pleos/playground/vehicle/listener/HvacAcStateListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onHvacAcStateUpdated(Ljava/lang/Boolean;)V
+interface ai/pleos/playground/vehicle/listener/HvacAirCleanerStateListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onHvacAirCleanerStateUpdated(Ljava/lang/Boolean;)V
+interface ai/pleos/playground/vehicle/listener/HvacAutoStateListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onHvacAutoStateUpdated(Ljava/lang/Boolean;)V
+interface ai/pleos/playground/vehicle/listener/HvacDefrosterStateListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onHvacDefrosterStateUpdated(Ljava/lang/Boolean;)V
+interface ai/pleos/playground/vehicle/listener/HvacDualStateListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+--
+interface ai/pleos/playground/vehicle/listener/SeatAirbagDeployedListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onSeatAirbagDeployUpdated(Ljava/lang/Boolean;)V
+interface ai/pleos/playground/vehicle/listener/SeatAirbagEnabledListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onSeatAirbagEnabledUpdated(Ljava/lang/Boolean;)V
+interface ai/pleos/playground/vehicle/listener/SeatBackrestAnglePositionListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onSeatBackrestAnglePositionUpdated(Ljava/lang/Integer;)V
+interface ai/pleos/playground/vehicle/listener/SeatBeltBuckledStateListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onSeatBeltBuckledStateUpdated(Ljava/lang/Boolean;)V
+interface ai/pleos/playground/vehicle/listener/SeatBeltHeightPositionListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onSeatBeltHeightPositionUpdated(Ljava/lang/Integer;)V
+interface ai/pleos/playground/vehicle/listener/SeatBeltNotBuckledWarningListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onSeatBeltNotBuckledWarningUpdated(Ljava/lang/Boolean;)V
+interface ai/pleos/playground/vehicle/listener/SeatDepthPositionListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+--
+interface ai/pleos/playground/vehicle/listener/TelltaleInfoListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onTelltaleInfoUpdated(Lai/pleos/playground/vehicle/api/model/telltale/Telltales;)V
+interface ai/pleos/playground/vehicle/listener/TemperatureDisplayUnitListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onTemperatureDisplayUnitUpdated(Lai/pleos/playground/vehicle/constant/unit/TemperatureUnit;)V
+interface ai/pleos/playground/vehicle/listener/TirePressureListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onTirePressureUpdated(Ljava/lang/Float;)V
+interface ai/pleos/playground/vehicle/listener/TripDrivingDistanceListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onTripDrivingDistanceUpdated(Lai/pleos/playground/vehicle/api/model/common/TripStatistics;)V
+interface ai/pleos/playground/vehicle/listener/TripDrivingTimeListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onTripDrivingTimeUpdated(Lai/pleos/playground/vehicle/api/model/common/TripStatistics;)V
+interface ai/pleos/playground/vehicle/listener/TripEvEfficiencyListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
+   M onTripEvEfficiencyUpdated(Lai/pleos/playground/vehicle/api/model/common/TripStatistics;)V
+interface ai/pleos/playground/vehicle/listener/TripFuelEconomyListener : java/lang/Object ['ai/pleos/playground/vehicle/listener/VehicleListener']
