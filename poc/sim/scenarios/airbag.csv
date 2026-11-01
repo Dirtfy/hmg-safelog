@@ -1,0 +1,10 @@
+t_ms,speed_kph,brake,gear,airbag,telltales
+0,50.0,0,DRIVE,0,
+1000,50.0,0,DRIVE,0,
+2000,50.0,0,DRIVE,0,
+3000,50.0,0,DRIVE,0,
+4000,50.0,0,DRIVE,0,
+5000,50.0,0,DRIVE,0,
+6000,20.0,1,DRIVE,1,
+7000,0.0,1,DRIVE,0,
+8000,0.0,1,PARK,0,
