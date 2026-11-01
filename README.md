@@ -6,8 +6,8 @@
 ## 구조
 | 경로 | 내용 |
 |---|---|
-| `docs/plan/기획서_세이프로그_v7.docx` | 제출용 기획서 — 공모전 공식 접수양식(form.docx) 원본에 02 항목 1~8 기입 + 별지 1~4 |
-| `docs/plan/기획서_세이프로그_v7.pdf` | 같은 내용의 PDF |
+| `docs/plan/기획서_세이프로그.docx` | 제출용 기획서 — 공모전 공식 접수양식(form.docx) 원본에 02 항목 1~8 기입 + 별지 1~3 (출처 · 수치 근거표 · PoC 판정표) |
+| `docs/plan/기획서_세이프로그.pdf` | 같은 내용의 PDF |
 | `docs/research/` | 근거 자료(조사 노트 md), Pleos SDK 공개 API 시그니처 추출본 |
 | `docs/poc/poc_verdict.md` | PoC 구현 가능성 판정표 (구현됨 / 대체 구현 / 불가) |
 | `poc/core` | 순수 Kotlin 로직: `PedalGuard`, `ParkingStartCheck`, `TripFeedback`, `AlertPolicy`(공유·동의 알림) + JUnit5 테스트 |
