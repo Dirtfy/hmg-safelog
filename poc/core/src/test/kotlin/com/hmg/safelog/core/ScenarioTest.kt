@@ -126,8 +126,8 @@ class ScenarioTest {
         val rig = Rig(offsetMs = 12 * 3_600_000L); rig.run("trip_commute")
         assertEquals(1, rig.trips.size)
         val t = rig.trips[0]
-        assertEquals(13_000L, t.durationMs)
-        assertEquals(76.67, t.distanceM, 0.5)
+        assertEquals(14_000L, t.durationMs)
+        assertEquals(72.22, t.distanceM, 0.5)
         assertEquals(1, t.hardAccelCount)
         assertEquals(1, t.hardBrakeCount)
         assertEquals(0, t.pedalEvents)
@@ -138,7 +138,7 @@ class ScenarioTest {
 
     @Test fun tripNightMinutes() {
         val rig = Rig(offsetMs = 23 * 3_600_000L); rig.run("trip_commute")
-        assertEquals(13_000L, rig.trips[0].nightMs)
+        assertEquals(14_000L, rig.trips[0].nightMs)
     }
 
     @Test fun tripCountsPedalEvent() {

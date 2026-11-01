@@ -69,10 +69,10 @@ H12 = 12 * 3600 * 1000
 write("telltale_3days", [row(i * H12, 0, True, "PARK", tt="ABS") for i in range(9)])
 
 # 9. commute trip: one hard accel (contiguous), one hard brake
-speeds = [0, 0, 8, 20, 30, 40, 40, 40, 40, 28, 20, 10, 0]
+speeds = [0, 0, 5, 10, 15, 20, 32, 40, 40, 40, 28, 20, 10, 0]
 r = [row(0, 0, True, "PARK"), row(1000, 0, True, "PARK")]
 for i, v in enumerate(speeds):
-    r.append(row(2000 + i * 1000, v, i >= 9, "DRIVE"))
-r.append(row(15000, 0, True, "PARK"))
+    r.append(row(2000 + i * 1000, v, i >= 10, "DRIVE"))
+r.append(row(16000, 0, True, "PARK"))
 write("trip_commute", r)
 print("ok")

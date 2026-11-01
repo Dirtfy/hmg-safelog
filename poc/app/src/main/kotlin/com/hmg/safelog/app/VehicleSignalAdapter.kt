@@ -38,7 +38,7 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
         v.initialize()
         vehicle = v
 
-        v.brake.registerBrakePedalStatus(object : BrakePedalStatusListener {
+        v.getBrake().registerBrakePedalStatus(object : BrakePedalStatusListener {
             override fun onBrakePedalStatusUpdated(pressed: Boolean?) {
                 listener.onBrake(now(), pressed == true)
             }
@@ -48,7 +48,7 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
             }
         })
 
-        v.gear.registerGearSelection(object : GearSelectionListener {
+        v.getGear().registerGearSelection(object : GearSelectionListener {
             override fun onSelected(gear: VehicleGear?) {
                 listener.onGear(now(), mapGear(gear))
             }
@@ -59,7 +59,7 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
         })
 
         // Row 1 left: driver seat airbag
-        v.safety.registerSeatAirbagDeployed(
+        v.getSafety().registerSeatAirbagDeployed(
             SeatArea(SeatValue.ROW_1_LEFT),
             object : SeatAirbagDeployedListener {
                 override fun onSeatAirbagDeployUpdated(deployed: Boolean?) {
@@ -72,9 +72,9 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
             },
         )
 
-        v.safety.registerTelltales(object : TelltaleInfoListener {
-            override fun onTelltaleInfoUpdated(telltales: Telltales) {
-                listener.onTelltales(now(), mapTelltales(telltales))
+        v.getSafety().registerTelltales(object : TelltaleInfoListener {
+            override fun onTelltaleInfoUpdated(telltales: Telltales?) {
+                listener.onTelltales(now(), mapTelltales(telltales ?: return))
             }
 
             override fun onFailed(e: Exception) {
