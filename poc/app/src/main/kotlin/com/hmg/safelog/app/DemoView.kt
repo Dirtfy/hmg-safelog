@@ -26,6 +26,8 @@ class DemoView(context: Context) : View(context) {
     enum class Mode { DRIVING, RECORD, REVIEW }
 
     @Volatile private var mode = Mode.DRIVING
+    /** Time source; frame-capture mode swaps in a virtual clock. */
+    var clock: () -> Long = { SystemClock.uptimeMillis() }
     @Volatile private var modeSince = SystemClock.uptimeMillis()
     @Volatile private var gear = Gear.PARK
     @Volatile private var speed = 0.0
@@ -44,13 +46,13 @@ class DemoView(context: Context) : View(context) {
     private val p = Paint(Paint.ANTI_ALIAS_FLAG)
     private val tp = TextPaint(Paint.ANTI_ALIAS_FLAG)
 
-    fun setMode(m: Mode) { modeSince = SystemClock.uptimeMillis(); mode = m; postInvalidate() }
+    fun setMode(m: Mode) { modeSince = clock(); mode = m; postInvalidate() }
     fun setRecord(r: EventRecord) { record = r }
     fun setTrip(t: TripSummary) { trip = t }
 
     fun onSignals(g: Gear, kph: Double, b: Boolean, tt: List<WarningTelltale>) {
         gear = g; speed = kph; brake = b; telltales = tt
-        if (b && alertAt != 0L && SystemClock.uptimeMillis() - alertAt > 300) bannerOff = true
+        if (b && alertAt != 0L && clock() - alertAt > 300) bannerOff = true
         postInvalidate()
     }
 
@@ -59,7 +61,7 @@ class DemoView(context: Context) : View(context) {
         if (text == pedalMessage) {
             bannerText = text
             bannerOff = false
-            alertAt = SystemClock.uptimeMillis()
+            alertAt = clock()
         }
         postInvalidate()
     }
@@ -116,7 +118,7 @@ class DemoView(context: Context) : View(context) {
 
     // ---------------------------------------------------------------- driving
     private fun drawDriving(c: Canvas) {
-        val now = SystemClock.uptimeMillis()
+        val now = clock()
         text(c, "SafeLog", 60f, 90f, 56f, Color.WHITE, bold = true)
         val tt = telltales
         if (tt.isNotEmpty()) {
@@ -191,7 +193,7 @@ class DemoView(context: Context) : View(context) {
         val rec = record
         val s = rec?.samples.orEmpty()
         if (rec == null || s.size < 2) return
-        val progress = ((SystemClock.uptimeMillis() - modeSince) / 3000f).coerceIn(0f, 1f)
+        val progress = ((clock() - modeSince) / 3000f).coerceIn(0f, 1f)
 
         val cl = 230f; val cr = 1840f; val ct = 250f; val cb = 740f
         val t0 = s.first().tMs; val t1 = s.last().tMs

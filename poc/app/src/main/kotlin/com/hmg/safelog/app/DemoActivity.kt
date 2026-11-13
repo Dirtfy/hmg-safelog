@@ -2,6 +2,8 @@ package com.hmg.safelog.app
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -13,6 +15,7 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
+import android.widget.TextView
 import com.hmg.safelog.core.Clock
 import com.hmg.safelog.core.Contact
 import com.hmg.safelog.core.ContactNotifier
@@ -26,6 +29,8 @@ import com.hmg.safelog.core.Speaker
 import com.hmg.safelog.core.TelltaleReading
 import com.hmg.safelog.core.TripSummary
 import com.hmg.safelog.core.WarningTelltale
+import java.io.File
+import java.io.FileOutputStream
 import java.util.Calendar
 import java.util.Locale
 
@@ -36,6 +41,8 @@ import java.util.Locale
  *
  * adb shell am start -n com.hmg.safelog.poc/com.hmg.safelog.app.DemoActivity --es scenario demo_mart_reverse
  * Optional: --ei record_hold_ms 8000 --ei review_hold_ms 10000
+ * Frame capture: --ez frames true renders the same screens offscreen on a virtual clock and saves
+ * one 1920x1080 PNG per 100 ms to files/frames (pull with run-as), so a slow emulator still gives smooth footage.
  */
 class DemoActivity : Activity() {
     private lateinit var view: DemoView
@@ -44,13 +51,17 @@ class DemoActivity : Activity() {
     @Volatile private var stopped = false
     private var worker: Thread? = null
     private val startUptime = SystemClock.uptimeMillis()
+    private var framesDir: File? = null
+    @Volatile private var vt = startUptime
+    private var frameNo = 0
 
     private class DemoRow(
         val tMs: Long, val kph: Double, val brake: Boolean, val gear: Gear,
         val airbag: Boolean, val telltales: List<WarningTelltale>,
     )
 
-    private fun el() = SystemClock.uptimeMillis() - startUptime
+    private fun now() = if (framesDir != null) vt else SystemClock.uptimeMillis()
+    private fun el() = now() - startUptime
     private fun log(msg: String) = Log.i(TAG, "T+${el()} $msg")
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,7 +69,18 @@ class DemoActivity : Activity() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         view = DemoView(this)
-        setContentView(view)
+        if (intent.getBooleanExtra("frames", false)) {
+            framesDir = filesDir.resolve("frames").apply { deleteRecursively(); mkdirs() }
+            view.clock = { vt }
+            view.measure(
+                View.MeasureSpec.makeMeasureSpec(FRAME_W, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(FRAME_H, View.MeasureSpec.EXACTLY),
+            )
+            view.layout(0, 0, FRAME_W, FRAME_H)
+            setContentView(TextView(this).apply { text = "프레임 캡처 중"; textSize = 32f })
+        } else {
+            setContentView(view)
+        }
         hideSystemBars()
 
         try {
@@ -133,6 +155,22 @@ class DemoActivity : Activity() {
         if (d > 0) Thread.sleep(d)
     }
 
+    /** Real time: sleep. Frame capture: step the virtual clock, saving one frame per FRAME_MS. */
+    private fun advanceTo(target: Long) {
+        val dir = framesDir ?: return sleepUntil(target)
+        while (vt < target) {
+            renderFrame(dir)
+            vt += FRAME_MS
+        }
+    }
+
+    private fun renderFrame(dir: File) {
+        val bmp = Bitmap.createBitmap(FRAME_W, FRAME_H, Bitmap.Config.ARGB_8888)
+        view.draw(Canvas(bmp))
+        FileOutputStream(File(dir, "f%05d.png".format(frameNo++))).use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        bmp.recycle()
+    }
+
     private fun runDemo(scenario: String, recordHold: Long, reviewHold: Long) {
         try {
             val rows = loadRows(scenario)
@@ -171,7 +209,7 @@ class DemoActivity : Activity() {
             view.setMode(DemoView.Mode.DRIVING)
             log("SCREEN driving")
             val allTelltales = WarningTelltale.values()
-            val t0 = SystemClock.uptimeMillis()
+            val t0 = now()
             val first = rows.first().tMs
             var prevT = first
             var skipped = 0L // long gaps (e.g. 12 h telltale samples) are compressed to 1.5 s
@@ -180,7 +218,7 @@ class DemoActivity : Activity() {
                 val gap = r.tMs - prevT
                 prevT = r.tMs
                 if (gap > 5_000) skipped += gap - 1_500
-                sleepUntil(t0 + (r.tMs - first - skipped))
+                advanceTo(t0 + (r.tMs - first - skipped))
                 view.onSignals(r.gear, r.kph, r.brake, r.telltales)
                 engine.onGear(r.tMs, r.gear)
                 engine.onBrake(r.tMs, r.brake)
@@ -190,23 +228,24 @@ class DemoActivity : Activity() {
             }
             engine.flush()
             log("SCENARIO_END")
-            Thread.sleep(2_000)
+            advanceTo(now() + 2_000)
 
             val rec = savedRecord
             if (rec != null) {
                 view.setRecord(rec)
                 view.setMode(DemoView.Mode.RECORD)
                 log("SCREEN record")
-                Thread.sleep(recordHold)
+                advanceTo(now() + recordHold)
             }
             val t = trip ?: engine.lastTrip
             if (t != null) {
                 view.setTrip(t)
                 view.setMode(DemoView.Mode.REVIEW)
                 log("SCREEN review")
-                Thread.sleep(reviewHold)
+                advanceTo(now() + reviewHold)
             }
             log("DEMO_DONE")
+            if (framesDir != null) log("FRAMES_DONE n=$frameNo")
         } catch (e: InterruptedException) {
             // activity closed
         } catch (e: Throwable) {
@@ -216,5 +255,8 @@ class DemoActivity : Activity() {
 
     private companion object {
         const val TAG = "SafeLog"
+        const val FRAME_MS = 100L
+        const val FRAME_W = 1920
+        const val FRAME_H = 1080
     }
 }

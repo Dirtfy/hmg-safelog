@@ -71,4 +71,15 @@ adb logcat -d -v time -s SafeLog > "$OUT/safelog_logcat.txt"
 adb logcat -d -v time '*:E' > "$OUT/errors_logcat.txt"
 ls -la "$OUT"
 cat "$OUT/safelog_logcat.txt"
-[ -s "$OUT/demo.mp4" ]
+
+# Pass 2: frame capture (same app, same engine, virtual clock) -> smooth 10 fps PNG sequence
+adb shell am force-stop "$PKG"
+adb logcat -c
+adb shell am start -W -n "$ACT" --es scenario "$SCENARIO" --ez frames true
+wait_for "FRAMES_DONE" 900
+adb logcat -d -v time -s SafeLog > "$OUT/frames_logcat.txt"
+cat "$OUT/frames_logcat.txt"
+adb exec-out run-as "$PKG" tar cf - files/frames > "$OUT/frames.tar"
+ls -la "$OUT/frames.tar"
+tar tf "$OUT/frames.tar" | wc -l
+[ -s "$OUT/demo.mp4" ] && [ -s "$OUT/frames.tar" ]
