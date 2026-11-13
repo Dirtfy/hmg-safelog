@@ -8,7 +8,7 @@ data class PedalGuardConfig(
     val preMs: Long = 10_000,
     val postMs: Long = 5_000,
     val cooldownMs: Long = 10_000,
-    val message: String = "브레이크를 밟으세요",
+    val message: String = "다른 페달, 브레이크를 밟으세요",
     val languageTag: String = "ko-KR",
 )
 

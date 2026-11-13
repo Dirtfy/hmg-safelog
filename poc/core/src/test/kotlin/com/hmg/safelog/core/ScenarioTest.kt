@@ -21,7 +21,7 @@ class ScenarioTest {
         }
     }
 
-    private val pedalMsg = "브레이크를 밟으세요"
+    private val pedalMsg = "다른 페달, 브레이크를 밟으세요"
 
     // ---- PedalGuard ----
     @Test fun reverseMisapplicationTriggersOnceWithEvidence() {

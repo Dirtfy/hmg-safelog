@@ -5,7 +5,7 @@ CI: https://github.com/Dirtfy/hmg-safelog/actions/runs/41285531757 (core-test �
 
 | 기능 | 판정 | 근거(클래스·메서드) | 비고 |
 |---|---|---|---|
-| 페달 안심 (오조작 의심 감지 + "브레이크를 밟으세요") | 대체 구현 | 속도: AAOS `CarPropertyManager` + `VehiclePropertyIds.PERF_VEHICLE_SPEED`(Pleos Vehicle SDK에 속도 API 없음); 브레이크: `Vehicle.getBrake().registerBrakePedalStatus`; 기어: `getGear().registerGearSelection` | **가속페달 API 없음** -> 속도 급상승 + 브레이크 미작동으로 추정. 임계값은 PedalGuardConfig. 실차 속도 갱신율 미검증 |
+| 페달 안심 (오조작 의심 감지 + "다른 페달, 브레이크를 밟으세요") | 대체 구현 | 속도: AAOS `CarPropertyManager` + `VehiclePropertyIds.PERF_VEHICLE_SPEED`(Pleos Vehicle SDK에 속도 API 없음); 브레이크: `Vehicle.getBrake().registerBrakePedalStatus`; 기어: `getGear().registerGearSelection` | **가속페달 API 없음** -> 속도 급상승 + 브레이크 미작동으로 추정. 임계값은 PedalGuardConfig. 실차 속도 갱신율 미검증 |
 | 이벤트 기록(전 10초/후 5초, JSON lines) | 구현됨 | core `PedalGuard`/`EventStore`, app `FileEventStore` | 테스트로 검증 |
 | 주차 출발 확인 (P->R/D) | 구현됨 | `GearSelectionListener.onSelected`, core `ParkingStartCheck` (10분 1회) | |
 | 본인 피드백(주행 요약) | 구현됨 | core `TripTracker`/`TripSummary.toKorean()` | 속도 적분 거리; 운전자 본인에게만 표시 |
