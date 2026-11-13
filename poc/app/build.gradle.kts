@@ -23,6 +23,9 @@ android {
         jvmTarget = "17"
     }
 
+    // Demo mode replays the simulation CSVs straight from poc/sim/scenarios.
+    sourceSets.getByName("main").assets.srcDir("../sim/scenarios")
+
     // AAOS CarPropertyManager (PERF_VEHICLE_SPEED) lives in the optional android.car library.
     useLibrary("android.car")
 }

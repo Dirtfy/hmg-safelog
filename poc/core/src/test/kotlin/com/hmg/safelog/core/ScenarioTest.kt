@@ -40,6 +40,18 @@ class ScenarioTest {
         assertTrue(lines[1].contains("\"gear\""))
     }
 
+    @Test fun demoScenarioTriggersExactlyOnePedalWarning() {
+        val rig = Rig(); rig.run("demo_mart_reverse")
+        assertEquals(listOf(pedalMsg), rig.speaker.spoken.map { it.first }.filter { it == pedalMsg })
+        assertEquals("다른 페달, 브레이크를 밟으세요", pedalMsg)
+        // one parking-start prompt (P -> R) and one pedal warning, nothing else spoken
+        assertEquals(2, rig.speaker.spoken.size)
+        assertEquals(1, rig.store.records.size)
+        assertEquals(10_400L, rig.store.records[0].triggerMs)
+        assertEquals(1, rig.trips.size)
+        assertEquals(1, rig.trips[0].pedalEvents)
+    }
+
     @Test fun forwardLowSpeedMisapplicationTriggers() {
         val rig = Rig(); rig.run("forward_lowspeed_misapplication")
         assertEquals(1, rig.speaker.spoken.count { it.first == pedalMsg })

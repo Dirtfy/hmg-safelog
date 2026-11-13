@@ -75,4 +75,14 @@ for i, v in enumerate(speeds):
     r.append(row(2000 + i * 1000, v, i >= 10, "DRIVE"))
 r.append(row(16000, 0, True, "PARK"))
 write("trip_commute", r)
+# 10. demo (마트 주차장 후진, 25 s): P -> R(브레이크 밟음) -> 브레이크 뗌 -> 급발진 -> 브레이크 -> 정지 -> P
+r = steps(0, 4000, 0, 0, True, "PARK")
+r += steps(4100, 8000, 0, 0, True, "REVERSE")
+r += steps(8100, 10000, 0, 0, False, "REVERSE")
+r += steps(10100, 11000, 0, 27, False, "REVERSE")   # +3 kph per 100 ms
+r += steps(11100, 14000, 28, 35, False, "REVERSE")
+r += steps(14100, 19000, 34, 0, True, "REVERSE")    # brake pressed, slows to a stop
+r += steps(19100, 21000, 0, 0, True, "REVERSE")
+r += steps(21100, 25000, 0, 0, True, "PARK")
+write("demo_mart_reverse", r)
 print("ok")

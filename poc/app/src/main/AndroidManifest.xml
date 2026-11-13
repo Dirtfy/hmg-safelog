@@ -28,6 +28,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Demo mode: replays a scenario CSV through the real core engine. No Pleos SDK use. -->
+        <activity
+            android:name=".DemoActivity"
+            android:exported="true"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|density"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" />
+
         <service
             android:name=".SafeLogService"
             android:exported="false"
