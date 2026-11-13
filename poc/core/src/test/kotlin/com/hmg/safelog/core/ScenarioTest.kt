@@ -47,7 +47,7 @@ class ScenarioTest {
         // one parking-start prompt (P -> R) and one pedal warning, nothing else spoken
         assertEquals(2, rig.speaker.spoken.size)
         assertEquals(1, rig.store.records.size)
-        assertEquals(10_400L, rig.store.records[0].triggerMs)
+        assertEquals(10_800L, rig.store.records[0].triggerMs)
         assertEquals(1, rig.trips.size)
         assertEquals(1, rig.trips[0].pedalEvents)
     }

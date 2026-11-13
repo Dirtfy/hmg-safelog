@@ -24,6 +24,8 @@ adb shell settings put system user_rotation 0
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
 adb shell settings put global animator_duration_scale 0
+# suppress the one-time "Viewing full screen" immersive-mode hint so it does not cover the recording
+adb shell settings put secure immersive_mode_confirmations confirmed
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
 adb shell input keyevent KEYCODE_HOME

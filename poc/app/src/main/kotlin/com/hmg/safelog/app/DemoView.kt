@@ -195,7 +195,7 @@ class DemoView(context: Context) : View(context) {
 
         val cl = 230f; val cr = 1840f; val ct = 250f; val cb = 740f
         val t0 = s.first().tMs; val t1 = s.last().tMs
-        val vMax = (max(40.0, Math.ceil(s.maxOf { it.speedKph } / 10.0) * 10.0)).toFloat()
+        val vMax = (max(20.0, Math.ceil(s.maxOf { it.speedKph } / 10.0) * 10.0)).toFloat()
         fun x(t: Long) = cl + (cr - cl) * (t - t0).toFloat() / (t1 - t0).toFloat()
         fun y(v: Double) = cb - (cb - ct) * v.toFloat() / vMax
 

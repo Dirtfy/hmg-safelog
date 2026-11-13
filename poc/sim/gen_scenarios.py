@@ -79,9 +79,9 @@ write("trip_commute", r)
 r = steps(0, 4000, 0, 0, True, "PARK")
 r += steps(4100, 8000, 0, 0, True, "REVERSE")
 r += steps(8100, 10000, 0, 0, False, "REVERSE")
-r += steps(10100, 11000, 0, 27, False, "REVERSE")   # +3 kph per 100 ms
-r += steps(11100, 14000, 28, 35, False, "REVERSE")
-r += steps(14100, 19000, 34, 0, True, "REVERSE")    # brake pressed, slows to a stop
+r += steps(10100, 11500, 1, 15, False, "REVERSE")   # +1 kph per 100 ms (발이 가속 페달에)
+r += steps(11600, 12400, 15, 16, False, "REVERSE")  # 경고 후 약 1초 반응
+r += steps(12500, 19000, 15, 0, True, "REVERSE")    # brake pressed, slows to a stop
 r += steps(19100, 21000, 0, 0, True, "REVERSE")
 r += steps(21100, 25000, 0, 0, True, "PARK")
 write("demo_mart_reverse", r)
