@@ -214,7 +214,7 @@ class DemoView(context: Context) : View(context) {
         while (rec.triggerMs + sec * 1000L <= t1) {
             val tt = rec.triggerMs + sec * 1000L
             if (tt >= t0) {
-                val label = if (sec == 0) "경고" else if (sec > 0) "+${sec}초" else "${sec}초"
+                val label = if (sec == 0L) "경고" else if (sec > 0L) "+${sec}초" else "${sec}초"
                 text(c, label, x(tt), cb + 50f, 36f, 0xFF90A4AE.toInt(), Paint.Align.CENTER)
             }
             sec += 5
