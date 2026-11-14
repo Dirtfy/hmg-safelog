@@ -35,6 +35,6 @@ CFG
 fi
 C=$ANDROID_AVD_HOME/pleos.avd/config.ini
 sed -i '/^hw.ramSize/d;/^fastboot.forceColdBoot/d;/^hw.gpu/d;/^hw.lcd/d;/^vm.heapSize/d' $C
-printf 'hw.ramSize=4096\nvm.heapSize=512\nfastboot.forceColdBoot=yes\nhw.gpu.enabled=yes\nhw.gpu.mode=swiftshader_indirect\nhw.lcd.width=%s\nhw.lcd.height=%s\nhw.lcd.density=%s\n' "${LCD_W:-1920}" "${LCD_H:-1080}" "${LCD_DPI:-240}" >> $C
+printf 'hw.ramSize=4096\nvm.heapSize=512\nfastboot.forceColdBoot=yes\nhw.gpu.enabled=yes\nhw.gpu.mode=swiftshader_indirect\nhw.lcd.width=%s\nhw.lcd.height=%s\nhw.lcd.density=%s\n' "${LCD_W:-1920}" "${LCD_H:-1080}" "${LCD_DPI:-120}" >> $C
 cat $C
 cp $C "$OUT/avd_config.ini"
