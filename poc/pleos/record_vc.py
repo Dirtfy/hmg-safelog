@@ -96,6 +96,24 @@ CURSOR_JS = """
     document.addEventListener('pointerup', () => { c.style.transform = ''; c.style.background = 'rgba(255,64,129,.6)'; }, true);
   };
   if (document.body) add(); else document.addEventListener('DOMContentLoaded', add);
+  window.__pad = (id, down, show) => {
+    const el = document.getElementById(id), r = el.getBoundingClientRect();
+    const x = r.x + r.width / 2, y = r.y + r.height / 2, c = document.getElementById('__cur');
+    if (show && c) { c.style.left = x + 'px'; c.style.top = y + 'px'; }
+    el.dispatchEvent(new PointerEvent(down ? 'pointerdown' : 'pointerup',
+      {bubbles: true, clientX: x, clientY: y, pointerId: 7, pointerType: 'mouse', isPrimary: true}));
+  };
+  window.__drive = (target, rate, hold) => new Promise(done => {
+    const v0 = vehicle.speed_kph, up = Math.abs(target - v0) / rate, sign = target >= v0 ? 1 : -1;
+    const t0 = performance.now();
+    let cur = null;
+    const set = p => { if (p === cur) return; if (cur) __pad(cur, false, true); cur = p; if (p) __pad(p, true, true); };
+    const iv = setInterval(() => {
+      const t = (performance.now() - t0) / 1000, want = v0 + sign * Math.min(up, t) * rate, v = vehicle.speed_kph;
+      set(v < want - 0.3 ? 'acceleratorPad' : v > want + 3 ? 'brakePad' : null);
+      if (t > up + hold) { set(null); clearInterval(iv); done(vehicle.speed_kph); }
+    }, 50);
+  });
 })();
 """
 
@@ -132,71 +150,54 @@ class Console:
         time.sleep(0.25)
         self.m.down(); time.sleep(0.15); self.m.up()
 
+    def pad(self, pad_id, down, show=True):
+        """페달 패드를 페이지 자신의 pointerdown/pointerup 핸들러로 누르거나 뗀다(마우스 클릭과 같은 경로)."""
+        self.page.evaluate("([i, d, s]) => window.__pad(i, d, s)", [pad_id, down, show])
+
     def gear(self, g):
+        """실차처럼 브레이크를 밟은 채 기어를 바꾼다(Virtual Console은 브레이크 없이 P에서 나가면 P로 되돌림)."""
+        ts(f"VC_BRAKE_HOLD for gear {g}")
+        self.pad("brakePad", True, False)
+        time.sleep(1.2)
         self.click(f"#gearButtons button[title='{g}']", f"gear {g}")
+        time.sleep(1.2)
+        self.pad("brakePad", False, False)
         time.sleep(0.6)
+        st = self.page.evaluate("[currentGear, document.getElementById('gearStatus').textContent]")
+        ts(f"VC_GEAR_NOW {st}")
 
-    def _set(self, pad):
-        """pad: None | 'accel' | 'brake' — press/release with the mouse on the pad."""
-        if pad == self.pressed:
-            return
-        if self.pressed is not None:
-            self.m.up()
-        self.pressed = pad
-        if pad is not None:
-            self.move("#acceleratorPad" if pad == "accel" else "#brakePad", steps=4)
-            self.m.down()
-
-    def follow(self, profile, seconds, tag):
-        """profile(t) -> desired km/h. Bang-bang on the pads every 100 ms, as a person would ease a pedal."""
-        ts(f"VC_DRIVE {tag} start={self.speed():.1f}")
-        t0 = time.time()
-        while time.time() - t0 < seconds:
-            want, v = profile(time.time() - t0), self.speed()
-            if v < want - 0.3:
-                pad = "accel"
-            elif v > want + 2.0:
-                pad = "brake"
-            else:
-                pad = None
-            # 가속 페달은 '조금씩': 누르고 있는 시간을 짧게 끊는다(페이지는 누르면 100%까지 올라감)
-            self._set(pad)
-            time.sleep(0.1)
-            if pad == "accel":
-                self._set(None)
-                time.sleep(0.05)
-        self._set(None)
-        ts(f"VC_DRIVE_END {tag} v={self.speed():.1f}")
-
-    def drive_to(self, target, rate=3.5, hold=0.0, tag="drive"):
+    def drive_to(self, target, rate=3.0, hold=0.0, tag="drive"):
+        """사람이 페달을 조금씩 밟듯, 페이지 안에서 50ms마다 ACCEL/BRAKE 패드를 눌렀다 뗐다 하며 목표 속도를 따라간다.
+        (CDP 왕복이 러너에서 1초 넘게 걸려 바깥 루프로는 페달을 조절할 수 없었다)"""
         v0 = self.speed()
-        up = abs(target - v0) / rate
-        sign = 1 if target >= v0 else -1
-        self.follow(lambda t: v0 + sign * min(up, t) * rate, up + hold, f"{tag} {v0:.0f}->{target}")
+        ts(f"VC_DRIVE {tag} {v0:.0f}->{target}")
+        v = self.page.evaluate("([t, r, h]) => window.__drive(t, r, h)", [target, rate, hold])
+        ts(f"VC_DRIVE_END {tag} v={v:.1f}")
+        return v
 
-    def stop(self, rate=5.0, tag="stop"):
+    def stop(self, rate=4.0, tag="stop"):
         v0 = self.speed()
         self.drive_to(0, rate=rate, tag=tag)
-        # 완전 정지까지 브레이크
-        self._set("brake")
+        self.pad("brakePad", True)
         t0 = time.time()
         while self.speed() > 0.2 and time.time() - t0 < 8:
-            time.sleep(0.1)
-        time.sleep(0.5)
-        self._set(None)
+            time.sleep(0.2)
+        time.sleep(1.0)
+        self.pad("brakePad", False)
         ts(f"VC_STOPPED {tag} from {v0:.0f}")
 
     def hold(self, pad, until=None, max_s=5.0, tag=""):
-        """한 페달을 계속 밟고 있기(오조작 장면)."""
+        """한 페달을 마우스로 꾹 누르고 있기(오조작 장면)."""
         ts(f"VC_HOLD {pad} {tag}")
-        self._set(pad)
+        self.move("#acceleratorPad" if pad == "accel" else "#brakePad", steps=8)
+        self.m.down()
         t0 = time.time()
         while time.time() - t0 < max_s:
             v = self.speed()
             if until is not None and until(v):
                 break
-            time.sleep(0.05)
-        self._set(None)
+            time.sleep(0.03)
+        self.m.up()
         ts(f"VC_RELEASE {pad} v={self.speed():.1f}")
 
     def telltale(self, area_label, value_label):
@@ -293,8 +294,10 @@ def main():
         vc.gear("Reverse")
         time.sleep(4)
         # 브레이크 대신 가속 페달을 꾹(후진) — 페이지 물리: 후진은 가속 0.45배
-        vc.hold("accel", until=lambda v: v >= 15, max_s=3.5, tag="wrong pedal")
+        vc.hold("accel", until=lambda v: v >= 15, max_s=4, tag="wrong pedal")
         vc.hold("brake", until=lambda v: v <= 0.2, max_s=4, tag="brake")
+        warned = "다른 페달" in sh("grep 'SPEAK' " + O + "/logcat.txt | tail -5")
+        ts(f"PEDAL_WARNING_SPOKEN {warned}")
         time.sleep(1)
         vc.gear("Park")
         time.sleep(5)
