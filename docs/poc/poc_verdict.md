@@ -1,6 +1,6 @@
 # SafeLog PoC 판정표
 
-**2026-11-14 갱신 — Pleos Connect Emulator 2.1.0 실제 실행 결과** (GitHub Actions `pleos-probe`, `poc/pleos/record_live.sh`)
+**2026-11-14 갱신 — Pleos Connect Emulator 2.1.0 실제 실행 결과** (GitHub Actions `pleos-probe`, `poc/pleos/record_live.sh` → v14부터 `record_vc.sh`: Virtual Console 웹 화면 조작)
 
 | 항목 | Pleos 에뮬레이터 결과 | 근거 / 조치 |
 |---|---|---|
@@ -12,7 +12,8 @@
 | Pleos TTS 발화 | 확인 | `TTS_VIA pleos` 로그. `pleos.car.permission.TTS_SERVICE` 미선언 시 앱 종료 → 추가 |
 | 경고등 수신 | **불가(권한)** | `registerTelltales`·`getTelltalesInfo` 모두 `PRIVATE_CAR_SAFETY` 요구 → 서드파티 앱 SecurityException. 앱은 격리 처리, 시연은 값을 브로드캐스트로 넣음 |
 | 경고등 쉬운 말 해설 + 정비소 경유지 | 구현됨(로직·NaviHelper 호출 확인) | core `TelltaleGuide`/`TelltaleExplainer`, `VoiceReply`; `NaviHelper.requestRoute`/`addWaypoint` 호출. 에뮬레이터 지도 데이터가 없어 경유지 목록은 비어 있음 |
-| 오늘 돌아보기 + 보내기 | 구현됨 | core `DayReview.shareCard()` (횟수만, 위치·경로 없음) + `SharePolicy.driverShare`. 실제 메시지 발송 채널은 없음 |
+| 오늘 돌아보기 + 가족 자동 전송 | 확인 | 주행 종료(P)마다 `SharePolicy.onTripEnd` → `TRIP_SUMMARY`에 동의한 가족에게만 `DayReview.shareCard()`(횟수만, 위치·경로 없음). 에뮬레이터에서 `SHARE_SENT auto` 로그 확인. 실제 메시지 발송 채널은 없음 |
+| Virtual Console 웹 화면 조작 | 확인(주의) | 기어는 브레이크를 밟은 채 바꿔야 유지됨. 페이지가 속도를 계산해 보냄. GPU 없는 러너에서는 3D 뷰가 CPU를 다 써서 막고 2D로. 앱 쪽 기어·브레이크 해제 콜백이 가끔 안 와서 재확인 필요 |
 | 주행 중 화면 | 제한됨 | DO 미인정(사이드로드) 앱은 주행·R단에서 화면 제한, 액티비티 재생성 → 상태를 `LiveSession`으로. DO 선언 추가(마켓 심사 후 인정 예상) |
 | 음성 인식(STT) | 미검증 | 에뮬레이터에 마이크 없음 → 인식된 문장을 브로드캐스트로 넣어 시연 |
 
@@ -30,7 +31,7 @@ CI: https://github.com/Dirtfy/hmg-safelog/actions/runs/41285531757 (core-test �
 | 본인 피드백(주행 요약) | 구현됨 | core `TripTracker`/`TripSummary.toKorean()` | 속도 적분 거리; 운전자 본인에게만 표시 |
 | 동의 기반 알림(에어백) | 구현됨(빌드 검증) | `Safety.registerSeatAirbagDeployed(SeatArea(SeatValue.ROW_1_LEFT), SeatAirbagDeployedListener)` | 운전석만 등록; 다른 좌석은 확장 필요. 실제 연락처 전송 채널(SMS 등) 미구현 - 인터페이스만 |
 | 경고등 N일 지속 리마인드 | 구현됨(빌드 검증) | `Safety.registerTelltales(TelltaleInfoListener)`, `TelltaleType` ABS/ESC/AIRBAG/ENGINE/ENGINE_OIL_PRESSURE/TPMS/MASTER_WARNING | 상태 영속화(앱 재시작 후 지속일 계산) 미구현 |
-| 공유 기본 OFF / 운전자 주도 공유 | 구현됨 | core `SharePolicy`, `EventAlertPolicy` | 기본 동의 시 연락처 발송 0건 테스트 |
+| 가족 자동 전송(동의한 가족만) | 구현됨 | core `SharePolicy.onTripEnd`, `EventAlertPolicy` | 동의 없는 연락처 발송 0건, `TRIP_SUMMARY` 동의 가족만 수신 테스트 |
 | 한국어 TTS | 구현됨(빌드 검증) | `TextToSpeech(context, Mode.HYBRID)`, `setLocale(Locale.KOREA)`, `speak(String, Boolean)` | 실기기 음성 출력 미검증 |
 
 ## 한계
