@@ -6,6 +6,7 @@ import android.car.hardware.CarPropertyValue
 import android.car.hardware.property.CarPropertyManager
 import android.content.Context
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.Looper
 import android.util.Log
 import ai.pleos.playground.vehicle.Vehicle
@@ -82,6 +83,7 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
 
     private val handler = Handler(Looper.getMainLooper())
     private var telltalePoll: Runnable? = null
+    private var telltaleWarned = false
 
     private fun pollTelltales(v: Vehicle, listener: SignalListener) {
         val r = object : Runnable {
@@ -91,7 +93,8 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
                         val tt: Telltales? = t
                         if (tt != null) listener.onTelltales(now(), mapTelltales(tt))
                     }, { e ->
-                        Log.w(TAG, "getTelltalesInfo failed: $e")
+                        if (!telltaleWarned) Log.w(TAG, "PERMISSION_DENIED telltales (getTelltalesInfo): $e")
+                        telltaleWarned = true
                     })
                 }
                 handler.postDelayed(this, TELLTALE_POLL_MS)
@@ -110,8 +113,14 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
         }
     }
 
+    private var carThread: HandlerThread? = null
+
     private fun startSpeed(listener: SignalListener) {
-        val c = Car.createCar(context)
+        // Car callbacks default to the main thread; a busy UI thread delayed speed events by tens of seconds
+        // on the Pleos emulator. Deliver them on their own thread instead.
+        val t = HandlerThread("safelog-car").also { it.start() }
+        carThread = t
+        val c = Car.createCar(context, Handler(t.looper))
         car = c
         val mgr = c.getCarManager(Car.PROPERTY_SERVICE) as CarPropertyManager
         propertyManager = mgr
@@ -126,13 +135,15 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
             }
         }
         speedCallback = cb
-        mgr.registerCallback(cb, VehiclePropertyIds.PERF_VEHICLE_SPEED, CarPropertyManager.SENSOR_RATE_FASTEST)
+        val ok = mgr.registerCallback(cb, VehiclePropertyIds.PERF_VEHICLE_SPEED, CarPropertyManager.SENSOR_RATE_FASTEST)
+        Log.i(TAG, "speed callback registered=$ok")
     }
 
     override fun stop() {
         telltalePoll?.let { handler.removeCallbacks(it) }
         speedCallback?.let { propertyManager?.unregisterCallback(it) }
         car?.disconnect()
+        carThread?.quitSafely()
         vehicle?.release()
         speedCallback = null; propertyManager = null; car = null; vehicle = null
     }

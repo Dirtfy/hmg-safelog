@@ -116,10 +116,10 @@ class LiveActivity : Activity() {
         setContentView(view)
         if (intent.getBooleanExtra("fullscreen", false)) hideSystemBars()
         // logged so a test script can tap the on-screen buttons (layout unit 1920x1080, fitted + centered)
-        view.post {
+        view.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
             val loc = IntArray(2)
-            view.getLocationOnScreen(loc)
-            log("VIEW_BOUNDS ${loc[0]} ${loc[1]} ${view.width} ${view.height}")
+            v.getLocationOnScreen(loc)
+            log("VIEW_BOUNDS ${loc[0]} ${loc[1]} ${v.width} ${v.height}")
         }
 
         pleosTts = try { PleosTtsSpeaker(this) } catch (e: Throwable) { Log.w(TAG, "pleos tts: $e"); null }
@@ -164,7 +164,7 @@ class LiveActivity : Activity() {
         adapter = VehicleSignalAdapter(this).also { it.start(listener) }
         log("LIVE_START")
 
-        val f = IntentFilter().apply { addAction(ACTION_VOICE); addAction(ACTION_UI) }
+        val f = IntentFilter().apply { addAction(ACTION_VOICE); addAction(ACTION_UI); addAction(ACTION_TELLTALE) }
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver, f, Context.RECEIVER_EXPORTED)
         else registerReceiver(receiver, f)
     }
@@ -219,8 +219,22 @@ class LiveActivity : Activity() {
             when (i.action) {
                 ACTION_VOICE -> onVoice(i.getStringExtra("text") ?: "")
                 ACTION_UI -> onButton(i.getStringExtra("button") ?: "")
+                ACTION_TELLTALE -> injectTelltale(i.getStringExtra("type") ?: "", i.getBooleanExtra("on", true))
             }
         }
+    }
+
+    /**
+     * Telltales need pleos.car.permission.PRIVATE_CAR_SAFETY, which a third-party app does not get on the
+     * Pleos Connect Emulator 2.1.0 (registerTelltales and getTelltalesInfo both throw). For the demo the reading
+     * is handed in here and goes through the same path as an SDK reading.
+     */
+    private fun injectTelltale(type: String, on: Boolean) {
+        val t = WarningTelltale.values().firstOrNull { it.name == type } ?: return
+        log("INJECT telltale $t on=$on")
+        val now = System.currentTimeMillis()
+        val readings = WarningTelltale.values().map { TelltaleReading(it, if (it == t) on else it in telltalesOn) }
+        listener.onTelltales(now, readings)
     }
 
     private fun onVoice(text: String) {
@@ -356,6 +370,7 @@ class LiveActivity : Activity() {
         const val TAG = "SafeLog"
         const val ACTION_VOICE = "com.hmg.safelog.poc.VOICE"
         const val ACTION_UI = "com.hmg.safelog.poc.UI"
+        const val ACTION_TELLTALE = "com.hmg.safelog.poc.TELLTALE"
         const val HOSPITAL_LAT = 37.3520
         const val HOSPITAL_LON = 127.1235
         const val SHOP_LAT = 37.3596

@@ -145,8 +145,9 @@ class DemoView(context: Context) : View(context) {
         }
         text(c, footer, 1860f, 1056f, 30f, 0xFF78909C.toInt(), Paint.Align.RIGHT)
         c.restore()
-        // keep animating (banner flash, record reveal)
-        postInvalidateOnAnimation()
+        // keep animating (banner flash, record reveal) at 10 fps: every-vsync redraws starve the UI thread
+        // under software rendering (Pleos emulator without GPU)
+        postInvalidateDelayed(100)
     }
 
     // ---------------------------------------------------------------- driving

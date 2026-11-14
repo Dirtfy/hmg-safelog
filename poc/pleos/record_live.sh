@@ -36,8 +36,8 @@ $VC gear Park; $VC controls 0 0 100
 adb logcat -c
 timeout 600 adb logcat -v epoch > "$O/logcat.txt" 2>&1 &
 a am start -W -n $PKG/com.hmg.safelog.app.LiveActivity --ez route true > "$O/am_start.txt"
-sleep 12
-grep -m1 "VIEW_BOUNDS" "$O/logcat.txt" | sed 's/.*VIEW_BOUNDS //' > "$O/view_bounds.txt"; cat "$O/view_bounds.txt"
+sleep 20
+grep "VIEW_BOUNDS" "$O/logcat.txt" | sed 's/.*VIEW_BOUNDS //' | awk '$3>0 && $4>0' | tail -1 > "$O/view_bounds.txt"; cat "$O/view_bounds.txt"
 timeout 30 adb exec-out screencap -p > "$O/s00_start.png"
 
 # ---------------- 장면 A: 아침, 병원 가는 길 · 주행 중 경고등(TPMS) → 쉬운 말 해설 → "응" → 정비소 경유지
@@ -48,6 +48,8 @@ $VC controls 0 0 0; sleep 0.5
 $VC ramp 0 40 5 30 0
 sleep 3
 ts "TELLTALE TPMS On"; $VC telltale TPMS On
+# 서드파티 앱은 경고등 API 권한(PRIVATE_CAR_SAFETY)이 없어 같은 값을 앱에 직접 넘긴다
+a am broadcast -a $PKG.TELLTALE --es type TPMS --ez on true -p $PKG > /dev/null
 sleep 10
 voice "응, 안내해 줘"
 sleep 8
@@ -58,6 +60,7 @@ $VC ramp 40 50 3 30 0
 sleep 120
 $VC ramp 50 0 6 0 60
 $VC controls 0 0 100; sleep 1; $VC gear Park; sleep 4
+grep "VIEW_BOUNDS" "$O/logcat.txt" | sed 's/.*VIEW_BOUNDS //' | awk '$3>0 && $4>0' | tail -1 > "$O/view_bounds.txt"; cat "$O/view_bounds.txt"
 
 # ---------------- 장면 B: 낮, 마트 주차장 후진 · 페달 오조작 의심
 rec_start B
