@@ -88,4 +88,17 @@ class SceneACTest {
         assertEquals(1, trips.size)
         assertEquals(0, trips[0].hardBrakeCount)
     }
+
+    @Test
+    fun unknownGearAtStartIsNotATrip() {
+        val clock = object : Clock {
+            override fun nowMs() = 0L
+            override fun localHour(epochMs: Long) = 12
+        }
+        val trips = ArrayList<TripSummary>()
+        val tt = TripTracker(clock) { trips += it }
+        tt.onSample(Sample(0, 0.0, false, Gear.UNKNOWN)) // app just started, gear not read yet
+        tt.onSample(Sample(500, 0.0, true, Gear.PARK))
+        assertEquals(0, trips.size)
+    }
 }

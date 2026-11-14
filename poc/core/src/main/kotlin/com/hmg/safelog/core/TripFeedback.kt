@@ -58,7 +58,8 @@ class TripTracker(
 
     fun onSample(s: Sample) {
         if (!active) {
-            if (s.gear != Gear.PARK) begin(s)
+            // UNKNOWN = no gear reading yet (app start); only a real gear out of PARK starts a trip
+            if (s.gear != Gear.PARK && s.gear != Gear.UNKNOWN) begin(s)
             prev = s
             return
         }
