@@ -161,28 +161,33 @@ class Console:
         self.page.evaluate("([i, d, s]) => window.__pad(i, d, s)", [pad_id, down, show])
 
     def gear(self, g):
-        """실차처럼 브레이크를 밟은 채 기어를 바꾼다(Virtual Console은 브레이크 없이 P에서 나가면 P로 되돌림)."""
-        ts(f"VC_BRAKE_HOLD for gear {g}")
-        self.pad("brakePad", True, False)
-        time.sleep(1.2)
-        self.click(f"#gearButtons button[title='{g}']", f"gear {g}")
-        t0 = time.time()
-        while time.time() - t0 < 15 and self.page.evaluate("currentGear") != g:
-            time.sleep(0.3)
-        # 앱(Pleos Vehicle SDK)이 기어를 받았는지 앱 로그로 확인하고, 6초 안에 안 오면 같은 버튼을 한 번 더 누른다
-        # (R→P 변경이 SDK 콜백으로 오지 않은 적이 있음)
+        """실차처럼 브레이크를 밟은 채 기어를 바꾼다(P로 갈 때는 페이지가 스스로 페달을 0으로 만들고 확인하므로 그냥 누름).
+        Virtual Console 화면과 앱(Pleos Vehicle SDK) 둘 다 바뀐 것을 확인하고, 아니면 같은 버튼을 다시 누른다
+        (러너가 바쁠 때 P 전환이 실패하거나 SDK 콜백이 오지 않은 적이 있음)."""
         want = {"Drive": "DRIVE", "Reverse": "REVERSE", "Park": "PARK", "Neutral": "NEUTRAL"}[g]
-        for again in range(2):
-            if self.app_saw_gear(want, t0, 6):
-                break
-            ts(f"VC_GEAR_NOT_RECEIVED {g} -> press again")
-            self.click(f"#gearButtons button[title='{g}']", f"gear {g} again")
+        if self.page.evaluate("currentGear") == g:
+            ts(f"VC_GEAR_ALREADY {g}")
+            return
+        hold = g != "Park"
+        for attempt in range(3):
+            if hold:
+                ts(f"VC_BRAKE_HOLD for gear {g}")
+                self.pad("brakePad", True, False)
+                time.sleep(1.2)
             t0 = time.time()
-        time.sleep(0.8)
-        self.pad("brakePad", False, False)
-        time.sleep(0.6)
-        st = self.page.evaluate("[currentGear, document.getElementById('gearStatus').textContent]")
-        ts(f"VC_GEAR_NOW {st}")
+            self.click(f"#gearButtons button[title='{g}']", f"gear {g}" + (" again" if attempt else ""))
+            while time.time() - t0 < 30 and (self.page.evaluate("currentGear") != g or self.page.evaluate("parkTransitionPending")):
+                time.sleep(0.3)
+            ok_page = self.page.evaluate("currentGear") == g
+            ok_app = self.app_saw_gear(want, t0, 12)
+            if hold:
+                time.sleep(0.5)
+                self.pad("brakePad", False, False)
+            st = self.page.evaluate("[currentGear, document.getElementById('gearStatus').textContent]")
+            ts(f"VC_GEAR_NOW {st} app={ok_app}")
+            if ok_page and ok_app:
+                return
+            time.sleep(1.0)
 
     @staticmethod
     def app_saw_gear(want, since, timeout):
@@ -288,6 +293,8 @@ def main():
                   "--disable-infobars", "--noerrdialogs", "--disable-session-crashed-bubble", "--hide-scrollbars"])
         ctx = br.new_context(no_viewport=True)
         ctx.add_init_script(CURSOR_JS)
+        # 2D 도로 애니메이션을 약 15fps로(녹화는 10fps). 물리 계산은 실제 경과 시간을 써서 결과는 같고, CPU를 에뮬레이터에 양보한다
+        ctx.add_init_script("window.requestAnimationFrame = cb => setTimeout(() => cb(performance.now()), 66);")
         # 3D 고속도로(three.js WebGL)는 GPU 없는 러너에서 CPU를 다 써 버려(클릭 하나에 40초) 막고 2D 도로(Forest 테마)로 띄운다
         ctx.add_init_script("try{localStorage.setItem('virtual-console-theme','forest')}catch(e){}")
         ctx.route("**/vendor/**", lambda r: r.abort())
@@ -332,7 +339,8 @@ def main():
         # 녹화 밖: 병원까지 계속 주행 후 주차(거리·시간이 돌아보기 요약에 들어감)
         for i in range(4):
             vc.drive_to(45, rate=3.0, hold=25, tag=f"A road {i}")
-            front()
+            if i % 2:
+                front()
         vc.stop(rate=4.0, tag="A arrive")
         vc.gear("Park")
         time.sleep(5)

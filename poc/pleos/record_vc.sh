@@ -36,7 +36,8 @@ a am start -W -n $PKG/com.hmg.safelog.app.LiveActivity --ez route true --ez fram
 sleep 15
 timeout 30 adb exec-out screencap -p > "$O/s00_start.png"
 
-timeout 1500 python3 poc/pleos/record_vc.py > "$O/record_vc.log" 2>&1 || echo "record_vc exit $?" >> "$O/record_vc.log"
+# Chrome·ffmpeg는 에뮬레이터보다 낮은 우선순위로(CPU가 모자라 앱 ANR이 났음)
+timeout 1500 nice -n 10 python3 poc/pleos/record_vc.py > "$O/record_vc.log" 2>&1 || echo "record_vc exit $?" >> "$O/record_vc.log"
 
 $VC state > "$O/state_end.json"
 sleep 2
