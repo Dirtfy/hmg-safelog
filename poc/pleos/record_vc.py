@@ -182,19 +182,34 @@ class Console:
             ok_app = self.app_saw_gear(want, t0, 12)
             if hold:
                 time.sleep(0.5)
-                t_rel = time.time()
                 self.pad("brakePad", False, False)
-                # 패드를 떼도 차량 쪽 '브레이크 밟음'이 풀리지 않은 채 남은 적이 있어(앱이 주행 내내 '밟음'),
-                # 3초 안에 앱이 brake=false를 못 받으면 Virtual Console REST로 정지·브레이크 0을 한 번 맞춘다
-                if not self.app_saw("SIG brake=false", t_rel, 3):
-                    ts("VC_REST_SYNC controls speed=0 accel=0 brake=0 (brake release not received)")
-                    sh("python3 poc/pleos/vc.py controls 0 0 0")
-                    ts(f"VC_REST_SYNC app_brake_false={self.app_saw('SIG brake=false', t_rel, 4)}")
+                self.settle_brake()
             st = self.page.evaluate("[currentGear, document.getElementById('gearStatus').textContent]")
             ts(f"VC_GEAR_NOW {st} app={ok_app}")
             if ok_page and ok_app:
                 return
+            if g == "Park" and ok_page and attempt == 1:
+                # 같은 P를 다시 보내도 SDK가 새 이벤트를 안 낼 수 있어 N을 거쳐 P로
+                ts("VC_PARK_VIA_N")
+                self.click("#gearButtons button[title='Neutral']", "gear Neutral (P 재전송용)")
+                time.sleep(3)
             time.sleep(1.0)
+
+    def settle_brake(self):
+        """Virtual Console 페이지는 정차 중 BRAKE 패드를 떼면 마지막 '브레이크 0'을 차량 쪽에 보내지 않고,
+        0.9초 주기 동기화로 남은 브레이크 값을 다시 받아 와 그 값이 가속을 상쇄한다(속도가 안 오름, 앱은 계속 '밟음').
+        패드를 뗀 뒤 페이지가 잠잠해지면 REST로 정지·브레이크 0을 한 번 맞추고 페이지·앱 모두 풀렸는지 확인한다."""
+        t_rel = time.time()
+        time.sleep(1.5)
+        for k in range(3):
+            ts("VC_REST_SYNC controls speed=0 accel=0 brake=0 (console does not send brake release when stopped)")
+            sh("python3 poc/pleos/vc.py controls 0 0 0")
+            time.sleep(1.5)
+            pb = self.page.evaluate("vehicle.brake_pct")
+            ok = self.app_saw("SIG brake=false", t_rel, 3)
+            ts(f"VC_REST_SYNC page_brake={pb} app_brake_false={ok}")
+            if pb == 0 and ok:
+                return
 
     @staticmethod
     def app_saw_gear(want, since, timeout):

@@ -25,6 +25,8 @@ $VC state > "$O/state0.json"
 timeout 120 adb install -r -t -g "$(ls poc/app/build/outputs/apk/debug/*.apk | head -1)" > "$O/install.txt" 2>&1
 a dumpsys package $PKG | grep -E "permission|granted|installer" > "$O/app_perms.txt"
 a settings put secure immersive_mode_confirmations confirmed
+# R단에서 Pleos 후방 카메라 앱(ai.umos.car.evs)이 뜨는데 에뮬레이터에 카메라가 없어 ANR → 시스템이 느려짐. 녹화 동안 끈다
+a pm disable-user --user 10 ai.umos.car.evs > "$O/evs_disable.txt" 2>&1; a pm disable-user ai.umos.car.evs >> "$O/evs_disable.txt" 2>&1
 $VC gear Park; $VC controls 0 0 0
 adb logcat -c
 timeout 1500 adb logcat -v epoch > "$O/logcat.txt" 2>&1 &
