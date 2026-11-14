@@ -361,10 +361,9 @@ def main():
         vc.drive_to(40, rate=3.0, hold=4, tag="A cruise3")
         rec_stop("A")
         # 녹화 밖: 병원까지 계속 주행 후 주차(거리·시간이 돌아보기 요약에 들어감)
-        for i in range(4):
-            vc.drive_to(45, rate=3.0, hold=25, tag=f"A road {i}")
-            if i % 2:
-                front()
+        # 녹화 밖 주행은 짧게(실행이 길어질수록 에뮬레이터가 불안정해짐)
+        vc.drive_to(45, rate=3.0, hold=20, tag="A road")
+        front()
         vc.stop(rate=4.0, tag="A arrive")
         vc.gear("Park")
         time.sleep(5)
@@ -394,7 +393,7 @@ def main():
 
         # ---------------- 장면 C: 저녁, 집에 도착 → 주차하면 오늘 요약이 가족에게 자동으로 감 → 돌아보기
         vc.gear("Drive")
-        vc.drive_to(30, rate=3.0, hold=40, tag="C road")
+        vc.drive_to(30, rate=3.0, hold=12, tag="C road")
         front(); time.sleep(1)
         rec_start("C")
         vc.drive_to(30, rate=3.0, hold=4, tag="C near home")
