@@ -7,6 +7,8 @@
     <!-- Pleos Vehicle SDK: Brake / Gear (CAR_DRIVE), Airbag / Telltale (CAR_SAFETY) -->
     <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
     <uses-permission android:name="pleos.car.permission.CAR_SAFETY" />
+    <!-- Pleos TextToSpeech: without it the TTS SDK throws SecurityException (found on Pleos Connect Emulator 2.1.0) -->
+    <uses-permission android:name="pleos.car.permission.TTS_SERVICE" />
     <!-- Pleos NaviHelper: route + waypoint (scene A) -->
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
     <uses-permission android:name="pleos.car.permission.NAVI_ROUTE_SEARCH" />
@@ -43,9 +45,8 @@
         <activity
             android:name=".LiveActivity"
             android:exported="true"
-            android:screenOrientation="landscape"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|density"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" />
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
 
         <service
             android:name=".SafeLogService"

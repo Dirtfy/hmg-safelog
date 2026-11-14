@@ -86,10 +86,15 @@ class DemoView(context: Context) : View(context) {
         postInvalidate()
     }
 
+    /** 1920x1080 layout fitted into the window (Pleos runs apps in a non-16:9 window). */
+    private fun unit() = minOf(width / 1920f, height / 1080f)
+    private fun offX() = (width - 1920f * unit()) / 2f
+    private fun offY() = (height - 1080f * unit()) / 2f
+
     override fun onTouchEvent(e: MotionEvent): Boolean {
         if (e.action == MotionEvent.ACTION_DOWN) {
-            val u = width / 1920f
-            val x = e.x / u; val y = e.y / u
+            val u = unit()
+            val x = (e.x - offX()) / u; val y = (e.y - offY()) / u
             when {
                 mode == Mode.REVIEW && day != null && x in 1240f..1860f && y in 700f..880f -> onButton("send")
                 mode == Mode.REVIEW && day == null && x in 1100f..1860f && y in 700f..900f -> { shareOn = !shareOn; invalidate() }
@@ -128,9 +133,10 @@ class DemoView(context: Context) : View(context) {
     }
 
     override fun onDraw(c: Canvas) {
-        val u = width / 1920f
+        val u = unit()
         c.drawColor(BG)
         c.save()
+        c.translate(offX(), offY())
         c.scale(u, u)
         when (mode) {
             Mode.DRIVING -> drawDriving(c)

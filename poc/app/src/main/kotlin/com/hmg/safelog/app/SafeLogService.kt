@@ -13,6 +13,7 @@ import com.hmg.safelog.core.ContactNotifier
 import com.hmg.safelog.core.DriverNotifier
 import com.hmg.safelog.core.EventAlertPolicy
 import com.hmg.safelog.core.SafeLogEngine
+import com.hmg.safelog.core.Speaker
 import java.util.Calendar
 
 /** Foreground service skeleton: wires adapters to the core engine. */
@@ -35,7 +36,12 @@ class SafeLogService : Service() {
                 .build(),
         )
 
-        val tts = PleosTtsSpeaker(this).also { speaker = it }
+        val tts: Speaker = try {
+            PleosTtsSpeaker(this).also { speaker = it }
+        } catch (e: SecurityException) {
+            Log.w("SafeLog", "Pleos TTS unavailable: $e")
+            object : Speaker { override fun speak(text: String, languageTag: String) = Log.i("SafeLog", "SPEAK $text") }
+        }
         val clock = object : Clock {
             override fun nowMs() = System.currentTimeMillis()
             override fun localHour(epochMs: Long): Int =

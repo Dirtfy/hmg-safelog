@@ -114,7 +114,13 @@ class LiveActivity : Activity() {
         view.footer = intent.getStringExtra("footer") ?: "Pleos Connect Emulator · 차량 신호: Virtual Console / VHAL"
         view.onButton = { onButton(it) }
         setContentView(view)
-        hideSystemBars()
+        if (intent.getBooleanExtra("fullscreen", false)) hideSystemBars()
+        // logged so a test script can tap the on-screen buttons (layout unit 1920x1080, fitted + centered)
+        view.post {
+            val loc = IntArray(2)
+            view.getLocationOnScreen(loc)
+            log("VIEW_BOUNDS ${loc[0]} ${loc[1]} ${view.width} ${view.height}")
+        }
 
         pleosTts = try { PleosTtsSpeaker(this) } catch (e: Throwable) { Log.w(TAG, "pleos tts: $e"); null }
         try {
@@ -166,6 +172,7 @@ class LiveActivity : Activity() {
     // ------------------------------------------------------------------ signals
     private val listener = object : SignalListener {
         override fun onSpeed(tMs: Long, kph: Double) {
+            if (Math.abs(kph - this@LiveActivity.kph) >= 1.0) log("SIG kph=${"%.1f".format(kph)}")
             this@LiveActivity.kph = kph
             engine.onSpeed(tMs, kph)
             refresh()
@@ -181,6 +188,7 @@ class LiveActivity : Activity() {
         override fun onGear(tMs: Long, gear: Gear) {
             if (gear != this@LiveActivity.gear) log("SIG gear=$gear")
             this@LiveActivity.gear = gear
+            if (gear == Gear.PARK) { offer = null; view.setAdvice(null) }
             engine.onGear(tMs, gear)
             // gear change is also a sample point, so parking prompts don't wait for the next speed tick
             engine.onSpeed(tMs, kph)
