@@ -99,6 +99,12 @@ CURSOR_JS = """
   window.__pad = (id, down, show) => {
     const el = document.getElementById(id), r = el.getBoundingClientRect();
     const x = r.x + r.width / 2, y = r.y + r.height / 2, c = document.getElementById('__cur');
+    // 페이지 핸들러가 setPointerCapture(pointerId)를 부르는데, 스크립트가 만든 포인터는 브라우저에 없어 예외가 나고
+    // 페달이 눌리지 않았다. 캡처 실패만 삼키고 나머지 핸들러는 그대로 돈다.
+    if (!el.__safeCapture) {
+      el.__safeCapture = true;
+      el.setPointerCapture = function (id) { try { HTMLElement.prototype.setPointerCapture.call(this, id); } catch (e) {} };
+    }
     if (show && c) { c.style.left = x + 'px'; c.style.top = y + 'px'; }
     el.dispatchEvent(new PointerEvent(down ? 'pointerdown' : 'pointerup',
       {bubbles: true, clientX: x, clientY: y, pointerId: 7, pointerType: 'mouse', isPrimary: true}));
@@ -163,11 +169,33 @@ class Console:
         t0 = time.time()
         while time.time() - t0 < 15 and self.page.evaluate("currentGear") != g:
             time.sleep(0.3)
+        # 앱(Pleos Vehicle SDK)이 기어를 받았는지 앱 로그로 확인하고, 6초 안에 안 오면 같은 버튼을 한 번 더 누른다
+        # (R→P 변경이 SDK 콜백으로 오지 않은 적이 있음)
+        want = {"Drive": "DRIVE", "Reverse": "REVERSE", "Park": "PARK", "Neutral": "NEUTRAL"}[g]
+        for again in range(2):
+            if self.app_saw_gear(want, t0, 6):
+                break
+            ts(f"VC_GEAR_NOT_RECEIVED {g} -> press again")
+            self.click(f"#gearButtons button[title='{g}']", f"gear {g} again")
+            t0 = time.time()
         time.sleep(0.8)
         self.pad("brakePad", False, False)
         time.sleep(0.6)
         st = self.page.evaluate("[currentGear, document.getElementById('gearStatus').textContent]")
         ts(f"VC_GEAR_NOW {st}")
+
+    @staticmethod
+    def app_saw_gear(want, since, timeout):
+        end = time.time() + timeout
+        while time.time() < end:
+            try:
+                for ln in open(os.path.join(O, "logcat.txt"), errors="replace"):
+                    if f"SIG gear={want}" in ln and float(ln.split()[0]) >= since - 0.5:
+                        return True
+            except (OSError, ValueError, IndexError):
+                pass
+            time.sleep(0.5)
+        return False
 
     def drive_to(self, target, rate=3.0, hold=0.0, tag="drive"):
         """사람이 페달을 조금씩 밟듯, 페이지 안에서 50ms마다 ACCEL/BRAKE 패드를 눌렀다 뗐다 하며 목표 속도를 따라간다.
