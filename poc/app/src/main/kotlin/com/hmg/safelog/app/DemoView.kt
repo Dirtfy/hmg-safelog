@@ -227,7 +227,7 @@ class DemoView(context: Context) : View(context) {
         if (driverSaid.isNotEmpty()) {
             text(c, "운전자: $driverSaid", 1810f, 835f, 40f, 0xFFFFD54F.toInt(), Paint.Align.RIGHT, bold = true)
         }
-        if (naviStatus.isNotEmpty()) {
+        if (naviStatus.isNotEmpty() && !bannerOn) {
             text(c, "내비게이션: $naviStatus", 60f, 160f, 40f, 0xFF81C784.toInt(), maxW = 1300f)
         }
         val a = advice

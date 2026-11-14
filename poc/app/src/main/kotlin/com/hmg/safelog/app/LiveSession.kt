@@ -80,20 +80,27 @@ object LiveSession {
 
     private fun log(msg: String) = Log.i(TAG, msg)
 
+    /** TTS runs on its own thread: the engine speaks while holding [engineLock], and a TTS call that waits on
+     *  the main thread while the main thread waits for the lock froze the app (killed on the Pleos emulator). */
+    private val speech = android.os.HandlerThread("safelog-tts").apply { start() }
+    private val speechHandler = Handler(speech.looper)
+
     private val speaker = object : Speaker {
         override fun speak(text: String, languageTag: String) {
             log("SPEAK $text")
             view.onUtterance(text)
-            try {
-                val p = pleosTts
-                val via = when {
-                    p != null && p.isReady -> { p.speak(text, languageTag); "pleos" }
-                    androidTtsReady -> { androidTts?.speak(text, TextToSpeech.QUEUE_ADD, null, text.hashCode().toString()); "android" }
-                    else -> "none"
+            speechHandler.post {
+                try {
+                    val p = pleosTts
+                    val via = when {
+                        p != null && p.isReady -> { p.speak(text, languageTag); "pleos" }
+                        androidTtsReady -> { androidTts?.speak(text, TextToSpeech.QUEUE_ADD, null, text.hashCode().toString()); "android" }
+                        else -> "none"
+                    }
+                    log("TTS_VIA $via")
+                } catch (e: Throwable) {
+                    Log.w(TAG, "tts failed: $e")
                 }
-                log("TTS_VIA $via")
-            } catch (e: Throwable) {
-                Log.w(TAG, "tts failed: $e")
             }
         }
     }

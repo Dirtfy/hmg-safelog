@@ -8,7 +8,7 @@
 | 차속 수신 | 확인 | Virtual Console 속도 → `CarPropertyManager` `PERF_VEHICLE_SPEED` (중앙값 0.35초, 90% 1.8초). 콜백은 별도 스레드로 받도록 수정 |
 | 페달 오조작 경고 | 확인 | R단 0→15km/h(1초, 브레이크 없음)에서 "다른 페달, 브레이크를 밟으세요" + 기록 저장. **빠른 정상 출발(5초에 40km/h, D단)에서도 경고** → 기준 재조정 필요 |
 | R/D 출발 안내 | 확인 | "오른발이 브레이크 위에 있는지 확인하세요" (10분 1회) |
-| 주행 요약 | 확인 | 신호 몰림으로 급제동 과다 집계(23회) 발견 → 1초 이상 구간 가속도로 수정(테스트 추가) |
+| 주행 요약 | 확인 | 신호 몰림으로 급제동 과다 집계(23회) 발견 → 1초 이상 구간 가속도로 수정(테스트 추가). 앱 시작 때 기어 미수신(UNKNOWN)을 주행으로 세던 문제, 기어·속도 콜백 스레드 경쟁으로 한 주행을 두 번 세던 문제도 수정 |
 | Pleos TTS 발화 | 확인 | `TTS_VIA pleos` 로그. `pleos.car.permission.TTS_SERVICE` 미선언 시 앱 종료 → 추가 |
 | 경고등 수신 | **불가(권한)** | `registerTelltales`·`getTelltalesInfo` 모두 `PRIVATE_CAR_SAFETY` 요구 → 서드파티 앱 SecurityException. 앱은 격리 처리, 시연은 값을 브로드캐스트로 넣음 |
 | 경고등 쉬운 말 해설 + 정비소 경유지 | 구현됨(로직·NaviHelper 호출 확인) | core `TelltaleGuide`/`TelltaleExplainer`, `VoiceReply`; `NaviHelper.requestRoute`/`addWaypoint` 호출. 에뮬레이터 지도 데이터가 없어 경유지 목록은 비어 있음 |
