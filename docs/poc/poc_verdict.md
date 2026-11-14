@@ -1,5 +1,24 @@
 # SafeLog PoC 판정표
 
+**2026-11-14 갱신 — Pleos Connect Emulator 2.1.0 실제 실행 결과** (GitHub Actions `pleos-probe`, `poc/pleos/record_live.sh`)
+
+| 항목 | Pleos 에뮬레이터 결과 | 근거 / 조치 |
+|---|---|---|
+| 브레이크·기어 수신 | 확인 | Virtual Console → `Brake.registerBrakePedalStatus`, `Gear.registerGearSelection` 콜백 (지연: 기어 중앙값 0.8초) |
+| 차속 수신 | 확인 | Virtual Console 속도 → `CarPropertyManager` `PERF_VEHICLE_SPEED` (중앙값 0.35초, 90% 1.8초). 콜백은 별도 스레드로 받도록 수정 |
+| 페달 오조작 경고 | 확인 | R단 0→15km/h(1초, 브레이크 없음)에서 "다른 페달, 브레이크를 밟으세요" + 기록 저장. **빠른 정상 출발(5초에 40km/h, D단)에서도 경고** → 기준 재조정 필요 |
+| R/D 출발 안내 | 확인 | "오른발이 브레이크 위에 있는지 확인하세요" (10분 1회) |
+| 주행 요약 | 확인 | 신호 몰림으로 급제동 과다 집계(23회) 발견 → 1초 이상 구간 가속도로 수정(테스트 추가) |
+| Pleos TTS 발화 | 확인 | `TTS_VIA pleos` 로그. `pleos.car.permission.TTS_SERVICE` 미선언 시 앱 종료 → 추가 |
+| 경고등 수신 | **불가(권한)** | `registerTelltales`·`getTelltalesInfo` 모두 `PRIVATE_CAR_SAFETY` 요구 → 서드파티 앱 SecurityException. 앱은 격리 처리, 시연은 값을 브로드캐스트로 넣음 |
+| 경고등 쉬운 말 해설 + 정비소 경유지 | 구현됨(로직·NaviHelper 호출 확인) | core `TelltaleGuide`/`TelltaleExplainer`, `VoiceReply`; `NaviHelper.requestRoute`/`addWaypoint` 호출. 에뮬레이터 지도 데이터가 없어 경유지 목록은 비어 있음 |
+| 오늘 돌아보기 + 보내기 | 구현됨 | core `DayReview.shareCard()` (횟수만, 위치·경로 없음) + `SharePolicy.driverShare`. 실제 메시지 발송 채널은 없음 |
+| 주행 중 화면 | 제한됨 | DO 미인정(사이드로드) 앱은 주행·R단에서 화면 제한, 액티비티 재생성 → 상태를 `LiveSession`으로. DO 선언 추가(마켓 심사 후 인정 예상) |
+| 음성 인식(STT) | 미검증 | 에뮬레이터에 마이크 없음 → 인식된 문장을 브로드캐스트로 넣어 시연 |
+
+---
+이하는 v7 판정표(컴파일·단위 테스트 기준)입니다.
+
 CI: https://github.com/Dirtfy/hmg-safelog/actions/runs/41285531757 (core-test 성공: 20 tests, 0 실패 / app-build 성공: assembleDebug APK)
 (이전 실행 41285189888: core 1건 실패(시나리오 설계 오류), app 컴파일 오류 -> 수정 후 통과)
 

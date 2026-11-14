@@ -8,10 +8,9 @@ VC="python3 poc/pleos/vc.py"
 a() { timeout 60 adb shell "$@" 2>&1; }
 ts() { echo "$(date +%s.%N) $*" | tee -a "$O/timeline.log"; }
 rec_start() { ts "REC_START $1"; timeout 20 adb emu screenrecord start --time-limit 170 "$O/scene_$1.webm" >> "$O/rec.log" 2>&1; }
-rec_stop() { timeout 20 adb emu screenrecord stop >> "$O/rec.log" 2>&1; ts "REC_STOP $1"; sleep 3; pull_frames; }
-# 앱이 그린 화면(주행 중 Pleos가 가려도 앱은 계속 그림). AAOS는 사용자 10에서 앱이 돈다 → run-as --user
-pull_frames() { U=$(timeout 20 adb shell am get-current-user | tr -d '\r'); timeout 120 adb exec-out run-as --user "$U" $PKG tar cf - files/frames > "$O/app_frames.tmp" 2>> "$O/rec.log" && [ $(stat -c %s "$O/app_frames.tmp") -gt 100000 ] && mv "$O/app_frames.tmp" "$O/app_frames.tar"; ls -la "$O"/app_frames.* >> "$O/rec.log"; }
+rec_stop() { timeout 20 adb emu screenrecord stop >> "$O/rec.log" 2>&1; ts "REC_STOP $1"; sleep 3; ls "$O/app_frames/files/frames" | wc -l >> "$O/rec.log"; }
 voice() { ts "VOICE $1"; a am broadcast -a $PKG.VOICE --es text "\"$1\"" -p $PKG > /dev/null; }
+button() { ts "BUTTON $1"; a am broadcast -a $PKG.UI --es button "$1" -p $PKG > /dev/null; }
 tap() { # 1920x1080 layout unit -> screen px using VIEW_BOUNDS
   read X Y W H < "$O/view_bounds.txt"
   python3 - "$1" "$2" $X $Y $W $H > /tmp/tap.txt <<'PY'
@@ -39,7 +38,11 @@ a settings put secure immersive_mode_confirmations confirmed
 $VC gear Park; $VC controls 0 0 100
 adb logcat -c
 timeout 600 adb logcat -v epoch > "$O/logcat.txt" 2>&1 &
-a am start -W -n $PKG/com.hmg.safelog.app.LiveActivity --ez route true --ez frames true > "$O/am_start.txt"
+# 앱이 그린 화면(주행 중 Pleos가 가려도 앱은 계속 그림)을 러너로 받음
+python3 poc/pleos/vc.py frame_server "$O/app_frames/files/frames" &
+FS=$!
+adb reverse tcp:9099 tcp:9099
+a am start -W -n $PKG/com.hmg.safelog.app.LiveActivity --ez route true --ez frames true --es frame_url http://127.0.0.1:9099/ > "$O/am_start.txt"
 sleep 20
 grep "VIEW_BOUNDS" "$O/logcat.txt" | sed 's/.*VIEW_BOUNDS //' | awk '$3>0 && $4>0' | tail -1 > "$O/view_bounds.txt"; cat "$O/view_bounds.txt"
 timeout 30 adb exec-out screencap -p > "$O/s00_start.png"
@@ -84,10 +87,10 @@ sleep 2
 ts "GEAR P"; $VC gear Park
 sleep 4
 timeout 30 adb exec-out screencap -p > "$O/sB_parked.png"
-tap 480 690   # 기록 보기
+button record   # 기록 보기 (터치와 같은 onButton 경로)
 sleep 11
 timeout 30 adb exec-out screencap -p > "$O/sB_record.png"
-tap 1800 80   # 닫기
+button close
 sleep 2
 rec_stop B
 
@@ -95,7 +98,7 @@ rec_stop B
 a am start -n $PKG/com.hmg.safelog.app.LiveActivity > /dev/null; sleep 2
 rec_start C
 sleep 3
-tap 1410 690  # 오늘 운전 돌아보기
+button review  # 오늘 운전 돌아보기
 sleep 10
 voice "보내 줘"
 sleep 8
@@ -103,8 +106,7 @@ timeout 30 adb exec-out screencap -p > "$O/sC_sent.png"
 rec_stop C
 
 $VC state > "$O/state_end.json"
-pull_frames
 sleep 2
-kill %1 2>/dev/null; kill $HB 2>/dev/null
+kill %1 2>/dev/null; kill $HB $FS 2>/dev/null
 grep -E " SafeLog|NaviHelper|Navi|TextToSpeech|pleos" "$O/logcat.txt" | grep -viE "dexopt" > "$O/logcat_app.txt"
 ls -la "$O"

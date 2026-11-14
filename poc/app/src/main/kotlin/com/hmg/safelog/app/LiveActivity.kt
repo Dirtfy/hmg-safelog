@@ -24,7 +24,10 @@ class LiveActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        LiveSession.start(this, intent.getBooleanExtra("route", false), intent.getBooleanExtra("frames", false))
+        LiveSession.start(
+            this, intent.getBooleanExtra("route", false), intent.getBooleanExtra("frames", false),
+            intent.getStringExtra("frame_url"),
+        )
         val view = LiveSession.view
         (view.parent as? ViewGroup)?.removeView(view)
         // Pleos draws its vehicle status strip over the top-left corner in full screen; optional inset

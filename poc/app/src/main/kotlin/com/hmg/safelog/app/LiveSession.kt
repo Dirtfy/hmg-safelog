@@ -114,7 +114,7 @@ object LiveSession {
 
     /** First call creates the engine and SDK connections; later activity instances only re-attach the view. */
     @Synchronized
-    fun start(context: Context, route: Boolean, frames: Boolean) {
+    fun start(context: Context, route: Boolean, frames: Boolean, frameUrl: String? = null) {
         if (started) return
         started = true
         app = context.applicationContext
@@ -160,7 +160,7 @@ object LiveSession {
             },
         )
 
-        if (frames) startFrames()
+        if (frames) startFrames(frameUrl)
         watchUxRestrictions()
         startNavi(route)
         adapter = VehicleSignalAdapter(app).also { it.start(listener) }
@@ -352,7 +352,7 @@ object LiveSession {
      * Saves what SafeLog draws (960x540 JPEG, 4 fps, file name = epoch ms) even while Pleos hides the activity
      * during driving. The video shows these next to the real Pleos screen. Pull: run-as ... files/frames
      */
-    private fun startFrames() {
+    private fun startFrames(frameUrl: String?) {
         val dir = app.filesDir.resolve("frames").apply { deleteRecursively(); mkdirs() }
         val shadow = DemoView(app)
         shadow.footer = view.footer
@@ -371,8 +371,18 @@ object LiveSession {
             override fun run() {
                 try {
                     shadow.draw(canvas)
-                    java.io.FileOutputStream(dir.resolve("${System.currentTimeMillis()}.jpg")).use {
-                        bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, it)
+                    val name = "${System.currentTimeMillis()}.jpg"
+                    val out = java.io.ByteArrayOutputStream()
+                    bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out)
+                    if (frameUrl != null) {
+                        // test rig: POST to a receiver on the host (adb reverse); app storage is per Android user
+                        val c = java.net.URL(frameUrl + name).openConnection() as java.net.HttpURLConnection
+                        c.requestMethod = "POST"; c.doOutput = true; c.connectTimeout = 1000; c.readTimeout = 1000
+                        c.outputStream.use { it.write(out.toByteArray()) }
+                        c.responseCode
+                        c.disconnect()
+                    } else {
+                        dir.resolve(name).writeBytes(out.toByteArray())
                     }
                 } catch (e: Throwable) {
                     Log.w(TAG, "frame failed: $e")

@@ -107,9 +107,32 @@ def wait_ready(timeout=180):
     return False
 
 
+def frame_server(dest, port=9099):
+    """앱이 POST하는 프레임(JPEG)을 dest/<epoch ms>.jpg로 저장 (adb reverse tcp:9099 tcp:9099)."""
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+    os.makedirs(dest, exist_ok=True)
+
+    class H(BaseHTTPRequestHandler):
+        def do_POST(self):
+            n = int(self.headers.get("Content-Length", 0))
+            data = self.rfile.read(n)
+            name = os.path.basename(self.path)
+            if name.endswith(".jpg"):
+                with open(os.path.join(dest, name), "wb") as f:
+                    f.write(data)
+            self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, *a):
+            pass
+    HTTPServer(("127.0.0.1", port), H).serve_forever()
+
+
 def main():
     a = sys.argv[1:]
-    if a[0] == "heartbeat":
+    if a[0] == "frame_server":
+        frame_server(a[1])
+    elif a[0] == "heartbeat":
         heartbeat()
     elif a[0] == "wait_ready":
         wait_ready()
