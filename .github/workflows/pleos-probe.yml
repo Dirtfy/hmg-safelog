@@ -76,8 +76,9 @@ jobs:
           timeout 20 adb emu kill || true
           df -h / > "$OUT/df_end.txt" || true
           tail -200 "$OUT/emulator.log" > "$OUT/emulator_tail.log" 2>/dev/null || true
+          tar czf pleos-out.tgz pleos-out
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: pleos-out
-          path: pleos-out/
+          path: pleos-out.tgz

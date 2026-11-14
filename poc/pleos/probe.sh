@@ -20,7 +20,7 @@ a service list > "$O/services.txt"
 adb forward tcp:8088 tcp:8088
 sleep 2
 curl -s -m 20 -D "$O/vc/headers.txt" http://127.0.0.1:8088/ -o "$O/vc/index.html"
-( cd "$O/vc" && wget -q -r -l 3 -p -np -e robots=off http://127.0.0.1:8088/ ; ls -R . > ls.txt )
+( cd "$O/vc" && wget -q -r -l 3 -p -np -nH -e robots=off http://127.0.0.1:8088/ ; ls -R . > ls.txt )
 # 앱 설치·실행
 APK=$(ls poc/app/build/outputs/apk/debug/*.apk | head -1)
 timeout 120 adb install -r -t -g "$APK" > "$O/install.txt" 2>&1
