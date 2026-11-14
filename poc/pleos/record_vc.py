@@ -62,7 +62,7 @@ def rec_start(scene):
     global ffm
     ts(f"REC_START {scene}")
     ffm = subprocess.Popen(
-        ["ffmpeg", "-y", "-loglevel", "error", "-f", "x11grab", "-draw_mouse", "0", "-framerate", "15",
+        ["ffmpeg", "-y", "-loglevel", "error", "-f", "x11grab", "-draw_mouse", "0", "-framerate", "10",
          "-video_size", f"{VW}x{VH}", "-i", DISPLAY + ".0", "-c:v", "libx264", "-preset", "ultrafast",
          "-pix_fmt", "yuv420p", os.path.join(O, f"vc_{scene}.mp4")],
         stdin=subprocess.PIPE)
@@ -160,7 +160,10 @@ class Console:
         self.pad("brakePad", True, False)
         time.sleep(1.2)
         self.click(f"#gearButtons button[title='{g}']", f"gear {g}")
-        time.sleep(1.2)
+        t0 = time.time()
+        while time.time() - t0 < 15 and self.page.evaluate("currentGear") != g:
+            time.sleep(0.3)
+        time.sleep(0.8)
         self.pad("brakePad", False, False)
         time.sleep(0.6)
         st = self.page.evaluate("[currentGear, document.getElementById('gearStatus').textContent]")
@@ -201,34 +204,47 @@ class Console:
         ts(f"VC_RELEASE {pad} v={self.speed():.1f}")
 
     def telltale(self, area_label, value_label):
+        """Emulation Controls(API 브라우저)의 Telltales 카드에서 area를 고르고 On을 누른다. 카드가 0.9초마다 다시 그려져
+        요소가 바뀔 수 있어 매번 새로 찾고, 끝내 실패하면 같은 값을 REST로 넣고 그렇게 기록한다."""
         p = self.page
         self.click("#apiBrowserOpen", "API browser")
-        time.sleep(0.8)
+        time.sleep(1.0)
         self.move("#apiSearch")
         self.m.down(); self.m.up()
         p.keyboard.type("Telltale", delay=90)
-        time.sleep(0.8)
-        card = p.locator("article.api-card", has=p.locator("h3", has_text="Telltales")).first
-        sel = card.locator("select.api-area")
-        x, y = self.center_of(sel)
-        self.m.move(x, y, steps=10)
-        ts(f"VC_SELECT telltale area {area_label}")
-        sel.select_option(label=area_label)
-        time.sleep(0.8)
-        card = p.locator("article.api-card", has=p.locator("h3", has_text="Telltales")).first
-        btn = card.locator("button.api-action", has_text=value_label).first
-        x, y = self.center_of(btn)
-        self.m.move(x, y, steps=10)
-        time.sleep(0.2)
-        ts(f"VC_CLICK telltale {area_label} {value_label}")
-        self.m.down(); time.sleep(0.12); self.m.up()
+        time.sleep(1.0)
+        card = lambda: p.locator("article.api-card", has=p.locator("h3", has_text="Telltales")).first
+        done = False
+        for attempt in range(6):
+            try:
+                sel = card().locator("select.api-area")
+                b = sel.bounding_box(timeout=3000)
+                if b:
+                    self.m.move(b["x"] + b["width"] / 2, b["y"] + b["height"] / 2, steps=10)
+                ts(f"VC_SELECT telltale area {area_label}")
+                sel.select_option(label=area_label, timeout=5000)
+                time.sleep(1.0)
+                btn = card().locator("button.api-action", has_text=value_label).first
+                b = btn.bounding_box(timeout=3000)
+                self.m.move(b["x"] + b["width"] / 2, b["y"] + b["height"] / 2, steps=10)
+                time.sleep(0.2)
+                ts(f"VC_CLICK telltale {area_label} {value_label}")
+                btn.click(timeout=5000)
+                done = True
+                break
+            except Exception as e:
+                ts(f"VC_TELLTALE_RETRY {attempt} {type(e).__name__}")
+                time.sleep(1.0)
         time.sleep(1.8)
         try:
-            ts("VC_TELLTALE_STATUS " + card.locator(".api-status").inner_text())
+            ts("VC_TELLTALE_STATUS " + card().locator(".api-status").inner_text(timeout=3000))
         except Exception as e:
-            ts(f"VC_TELLTALE_STATUS ? {e}")
+            ts(f"VC_TELLTALE_STATUS ? {type(e).__name__}")
         p.keyboard.press("Escape")
         ts("VC_API_BROWSER_CLOSED")
+        if not done:
+            ts(f"VC_TELLTALE_REST_FALLBACK {area_label} {value_label}")
+            sh(f"python3 poc/pleos/vc.py telltale {area_label} {value_label}")
 
     @staticmethod
     def center_of(loc):
@@ -244,6 +260,11 @@ def main():
                   "--disable-infobars", "--noerrdialogs", "--disable-session-crashed-bubble", "--hide-scrollbars"])
         ctx = br.new_context(no_viewport=True)
         ctx.add_init_script(CURSOR_JS)
+        # 3D 고속도로(three.js WebGL)는 GPU 없는 러너에서 CPU를 다 써 버려(클릭 하나에 40초) 막고 2D 도로(Forest 테마)로 띄운다
+        ctx.add_init_script("try{localStorage.setItem('virtual-console-theme','forest')}catch(e){}")
+        ctx.route("**/vendor/**", lambda r: r.abort())
+        ctx.route("**/highway-view.js", lambda r: r.abort())
+        ctx.route(lambda u: u.endswith((".glb", ".gltf", ".hdr")), lambda r: r.abort())
         page = ctx.new_page()
         page.goto("http://127.0.0.1:8088/", wait_until="load")
         time.sleep(6)
@@ -258,6 +279,7 @@ def main():
         page.screenshot(path=os.path.join(O, "vc_ready.png"))
         ts(f"VC_VIEWPORT {page.evaluate('[innerWidth, innerHeight]')}")
 
+        t_ = time.time(); page.evaluate("1"); ts(f"VC_RTT {time.time() - t_:.3f}s")
         vc.gear("Park")
         ts("READY")
 
