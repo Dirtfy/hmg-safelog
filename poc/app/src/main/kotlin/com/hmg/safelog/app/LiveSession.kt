@@ -349,7 +349,7 @@ object LiveSession {
     private var frameThread: android.os.HandlerThread? = null
 
     /**
-     * Saves what SafeLog draws (960x540 JPEG, 5 fps, file name = epoch ms) even while Pleos hides the activity
+     * Saves what SafeLog draws (960x540 JPEG, 4 fps, file name = epoch ms) even while Pleos hides the activity
      * during driving. The video shows these next to the real Pleos screen. Pull: run-as ... files/frames
      */
     private fun startFrames() {
@@ -377,7 +377,7 @@ object LiveSession {
                 } catch (e: Throwable) {
                     Log.w(TAG, "frame failed: $e")
                 }
-                h.postDelayed(this, 200)
+                h.postDelayed(this, 250)
             }
         })
         log("FRAMES_START")

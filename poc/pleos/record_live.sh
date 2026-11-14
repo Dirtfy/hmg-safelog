@@ -8,7 +8,9 @@ VC="python3 poc/pleos/vc.py"
 a() { timeout 60 adb shell "$@" 2>&1; }
 ts() { echo "$(date +%s.%N) $*" | tee -a "$O/timeline.log"; }
 rec_start() { ts "REC_START $1"; timeout 20 adb emu screenrecord start --time-limit 170 "$O/scene_$1.webm" >> "$O/rec.log" 2>&1; }
-rec_stop() { timeout 20 adb emu screenrecord stop >> "$O/rec.log" 2>&1; ts "REC_STOP $1"; sleep 3; }
+rec_stop() { timeout 20 adb emu screenrecord stop >> "$O/rec.log" 2>&1; ts "REC_STOP $1"; sleep 3; pull_frames; }
+# 앱이 그린 화면(주행 중 Pleos가 가려도 앱은 계속 그림). AAOS는 사용자 10에서 앱이 돈다 → run-as --user
+pull_frames() { U=$(timeout 20 adb shell am get-current-user | tr -d '\r'); timeout 120 adb exec-out run-as --user "$U" $PKG tar cf - files/frames > "$O/app_frames.tmp" 2>> "$O/rec.log" && [ $(stat -c %s "$O/app_frames.tmp") -gt 100000 ] && mv "$O/app_frames.tmp" "$O/app_frames.tar"; ls -la "$O"/app_frames.* >> "$O/rec.log"; }
 voice() { ts "VOICE $1"; a am broadcast -a $PKG.VOICE --es text "\"$1\"" -p $PKG > /dev/null; }
 tap() { # 1920x1080 layout unit -> screen px using VIEW_BOUNDS
   read X Y W H < "$O/view_bounds.txt"
@@ -101,8 +103,7 @@ timeout 30 adb exec-out screencap -p > "$O/sC_sent.png"
 rec_stop C
 
 $VC state > "$O/state_end.json"
-# 앱이 그린 화면(주행 중 Pleos가 가려도 앱은 계속 그림) 가져오기
-timeout 120 adb exec-out run-as $PKG tar cf - files/frames > "$O/app_frames.tar" 2>> "$O/rec.log"; ls -la "$O/app_frames.tar"
+pull_frames
 sleep 2
 kill %1 2>/dev/null; kill $HB 2>/dev/null
 grep -E " SafeLog|NaviHelper|Navi|TextToSpeech|pleos" "$O/logcat.txt" | grep -viE "dexopt" > "$O/logcat_app.txt"
