@@ -20,6 +20,7 @@ import ai.pleos.playground.navi.data.WaypointChangedInfo
 import ai.pleos.playground.navi.data.WaypointInfo
 import ai.pleos.playground.navi.helper.NaviHelper
 import ai.pleos.playground.navi.helper.listener.NaviHelperEventListener
+import com.hmg.safelog.core.AlertCategory
 import com.hmg.safelog.core.Clock
 import com.hmg.safelog.core.Contact
 import com.hmg.safelog.core.ContactNotifier
@@ -50,7 +51,7 @@ import java.util.Locale
  * Live mode for the Pleos Connect Emulator: vehicle signals come from the REAL Pleos Vehicle SDK
  * (gear / brake / telltales) and AAOS CarPropertyManager (speed), i.e. whatever the Virtual Console
  * or VHAL sets. Same core engine as the service; adds scene A (telltale advice + NaviHelper waypoint)
- * and scene C (day review + driver-initiated share).
+ * and scene C (day review; the summary card goes to the registered family automatically when each trip ends).
  *
  * adb shell am start -n com.hmg.safelog.poc/com.hmg.safelog.app.LiveActivity [--ez route true]
  * Driver voice reply (no microphone on the emulator, so the recognized text is handed in):
@@ -115,9 +116,12 @@ object LiveSession {
     private val share = SharePolicy(object : ContactNotifier {
         override fun notifyContact(contact: Contact, message: String) {
             // PoC: the card is built and handed to the notifier; no SMS/messenger channel yet.
-            log("SHARE_SENT to=${contact.name} lines=${message.lines().size}\n$message")
+            log("SHARE_SENT auto to=${contact.name} lines=${message.lines().size}\n$message")
         }
     })
+
+    /** Registered once at setup: the family member and their one-time consent to trip summaries. */
+    private val family = listOf(Contact("family", "가족", setOf(AlertCategory.TRIP_SUMMARY)))
 
     /** First call creates the engine and SDK connections; later activity instances only re-attach the view. */
     @Synchronized
@@ -164,6 +168,7 @@ object LiveSession {
             onTripSummary = { t ->
                 trips += t
                 log("TRIP_SUMMARY ${t.toKorean()}")
+                sendTripEnd()
             },
         )
 
@@ -268,7 +273,7 @@ object LiveSession {
             o != null && intent == ReplyIntent.YES -> { offer = null; addShopWaypoint() }
             o != null && intent == ReplyIntent.NO -> { offer = null; speaker.speak("알겠어요. 오늘 안에 꼭 점검해 주세요.") }
             o != null && intent == ReplyIntent.REPEAT -> speaker.speak(o.speech)
-            day != null && intent == ReplyIntent.SEND -> send()
+            intent == ReplyIntent.SEND -> speaker.speak("운전이 끝날 때마다 가족에게 자동으로 보내고 있어요.")
             else -> speaker.speak("다시 한 번 말씀해 주세요.")
         }
     }
@@ -284,20 +289,26 @@ object LiveSession {
                 view.setDay(d)
                 view.setMode(DemoView.Mode.REVIEW)
                 log("SCREEN review ${d.lines()}")
-                speaker.speak("오늘도 안전하게 운전하셨어요. 이 내용은 저만 알고 있어요.")
-                main.postDelayed({ if (day != null) speaker.speak("가족에게 보내고 싶으시면 말씀해 주세요.") }, 4_500)
+                lastSent?.let { view.setSent(it) }
+                speaker.speak("오늘도 안전하게 운전하셨어요.")
             }
-            "send" -> send()
             "close" -> { day = null; view.setMode(DemoView.Mode.DRIVING); log("SCREEN driving") }
         }
     }
 
-    private fun send() {
-        val d = day ?: return
+    @Volatile private var lastSent: String? = null
+
+    /** End of a trip (gear P): the day's summary card goes to the family automatically, counts only. */
+    private fun sendTripEnd() {
+        val d = DayReview.of(trips.toList(), synchronized(telltalesOn) { telltalesOn.toList() })
         val card = d.shareCard()
-        share.driverShare(Contact("family", "가족"), card)
+        val to = share.onTripEnd(family, card)
+        if (to.isEmpty()) return
+        lastSent = card
+        day = d
+        view.setDay(d)
         view.setSent(card)
-        speaker.speak("요약 카드를 보냈어요. 위치와 경로는 들어 있지 않아요.")
+        speaker.speak("운전이 끝났어요. 오늘 요약을 가족에게 보냈어요.")
     }
 
     // --------------------------------------------------------------- navigation

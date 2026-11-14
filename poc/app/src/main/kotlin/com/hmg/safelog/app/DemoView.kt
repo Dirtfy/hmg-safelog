@@ -43,7 +43,6 @@ class DemoView(context: Context) : View(context) {
     @Volatile private var bannerOff = false
     @Volatile private var record: EventRecord? = null
     @Volatile private var trip: TripSummary? = null
-    private var shareOn = false
     /** Bottom-right source label. */
     var footer = "시뮬레이션 신호(CSV) 재생 · 실제 차량 아님"
     // live mode (Pleos): telltale advice card, navigation status, driver reply, day review, sent card
@@ -102,8 +101,6 @@ class DemoView(context: Context) : View(context) {
             val u = unit()
             val x = (e.x - offX()) / u; val y = (e.y - offY()) / u
             when {
-                mode == Mode.REVIEW && day != null && x in 1240f..1860f && y in 700f..880f -> onButton("send")
-                mode == Mode.REVIEW && day == null && x in 1100f..1860f && y in 700f..900f -> { shareOn = !shareOn; invalidate() }
                 mode == Mode.DRIVING && parkedButtons && y in 640f..740f && x in 60f..900f -> onButton("record")
                 mode == Mode.DRIVING && parkedButtons && y in 640f..740f && x in 960f..1860f -> onButton("review")
                 mode != Mode.DRIVING && x > 1500f && y < 160f -> onButton("close")
@@ -337,7 +334,7 @@ class DemoView(context: Context) : View(context) {
         // caption
         val cap = RectF(300f, 930f, 1620f, 1030f)
         box(c, cap, 50f, 0xFF1B2733.toInt(), 0xFF66BB6A.toInt(), 5f)
-        text(c, "이 기록은 내가 열 때만 보여요", 960f, 1000f, 62f, Color.WHITE, Paint.Align.CENTER, bold = true, maxW = 1240f)
+        text(c, "이 그래프는 가족에게 보내지 않아요 (횟수만 보내요)", 960f, 1000f, 56f, Color.WHITE, Paint.Align.CENTER, bold = true, maxW = 1240f)
     }
 
     // ----------------------------------------------------------------- review
@@ -351,14 +348,10 @@ class DemoView(context: Context) : View(context) {
             .setAlignment(Layout.Alignment.ALIGN_NORMAL).setLineSpacing(0f, 1.25f).build()
         c.save(); c.translate(120f, 210f); layout.draw(c); c.restore()
 
-        // share toggle
-        text(c, "가족에게 보내기", 100f, 825f, 76f, Color.WHITE, bold = true)
-        val track = RectF(1280f, 725f, 1540f, 855f)
-        box(c, track, 65f, if (shareOn) 0xFF43A047.toInt() else 0xFF546E7A.toInt())
-        p.style = Paint.Style.FILL; p.color = Color.WHITE
-        c.drawCircle(if (shareOn) 1475f else 1345f, 790f, 52f, p)
-        text(c, if (shareOn) "켜짐" else "꺼짐", 1590f, 820f, 64f,
-            if (shareOn) 0xFF81C784.toInt() else 0xFFB0BEC5.toInt(), bold = true)
+        // automatic share (set up once with the family's consent)
+        text(c, "가족에게 자동으로 보내요", 100f, 800f, 76f, Color.WHITE, bold = true)
+        text(c, "운전이 끝나면 요약 카드(횟수만)를 보내요", 100f, 870f, 44f, 0xFFB0BEC5.toInt())
+        text(c, "켜짐", 1700f, 820f, 64f, 0xFF81C784.toInt(), Paint.Align.CENTER, bold = true)
 
         val note = RectF(60f, 910f, 1860f, 1030f)
         box(c, note, 50f, 0xFF1B2733.toInt(), 0xFF66BB6A.toInt(), 5f)
@@ -369,7 +362,7 @@ class DemoView(context: Context) : View(context) {
     private fun drawDay(c: Canvas) {
         val d = day ?: return
         text(c, "오늘 운전 돌아보기", 60f, 110f, 80f, Color.WHITE, bold = true)
-        text(c, "나만 보는 화면", 1860f, 105f, 48f, 0xFF66BB6A.toInt(), Paint.Align.RIGHT, bold = true)
+        text(c, "가족 자동 보내기 켜짐", 1860f, 105f, 48f, 0xFF66BB6A.toInt(), Paint.Align.RIGHT, bold = true)
         val card = RectF(60f, 160f, 1860f, 660f)
         box(c, card, 36f, 0xFF1B2733.toInt(), 0xFF4FC3F7.toInt(), 4f)
         for ((i, ln) in d.lines().withIndex()) {
@@ -377,13 +370,11 @@ class DemoView(context: Context) : View(context) {
         }
         val sent = sentCard
         if (sent == null) {
-            text(c, "가족에게 보내기", 100f, 760f, 66f, Color.WHITE, bold = true)
-            text(c, "기본 꺼짐 · 내가 누르거나 말할 때만", 100f, 840f, 44f, 0xFFB0BEC5.toInt())
-            box(c, RectF(1240f, 700f, 1860f, 880f), 60f, 0xFF263544.toInt(), 0xFF66BB6A.toInt(), 5f)
-            text(c, "보내기", 1550f, 820f, 76f, Color.WHITE, Paint.Align.CENTER, bold = true)
+            text(c, "가족에게 자동으로 보내요", 100f, 760f, 66f, Color.WHITE, bold = true)
+            text(c, "운전이 끝나면 요약 카드(횟수만)를 보내요 · 처음 설정 때 한 번 동의", 100f, 840f, 44f, 0xFFB0BEC5.toInt(), maxW = 1700f)
         } else {
             box(c, RectF(60f, 690f, 1860f, 900f), 40f, 0xFF1E3B2A.toInt(), 0xFF66BB6A.toInt(), 5f)
-            text(c, "보냈어요 · 요약 카드 (횟수만)", 110f, 770f, 60f, 0xFF81C784.toInt(), bold = true)
+            text(c, "가족에게 자동으로 보냈어요 · 요약 카드 (횟수만)", 110f, 770f, 60f, 0xFF81C784.toInt(), bold = true, maxW = 1700f)
             text(c, sent.lines().drop(1).take(3).joinToString("  ·  "), 110f, 850f, 42f, Color.WHITE, maxW = 1700f)
         }
         val note = RectF(60f, 920f, 1860f, 1020f)

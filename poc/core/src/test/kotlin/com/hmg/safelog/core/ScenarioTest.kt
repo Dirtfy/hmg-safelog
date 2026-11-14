@@ -212,11 +212,15 @@ class ScenarioTest {
         assertEquals(1, dn.reminders.size)
     }
 
-    @Test fun driverShareIsExplicitOnly() {
+    @Test fun tripSummaryGoesAutomaticallyOnlyToConsentedFamily() {
         val cn = RecordingContactNotifier()
         val share = SharePolicy(cn)
-        assertTrue(cn.sent.isEmpty())
-        share.driverShare(none, "오늘 주행 요약")
+        val family = Contact("c4", "딸", setOf(AlertCategory.TRIP_SUMMARY))
+        val to = share.onTripEnd(listOf(none, airbagOnly, family), "오늘 주행 요약")
+        assertEquals(listOf("c4"), to.map { it.id })
+        assertEquals(1, cn.sent.size)
+        assertEquals("c4", cn.sent[0].first.id)
+        assertTrue(share.onTripEnd(listOf(none, telltaleOnly), "오늘 주행 요약").isEmpty())
         assertEquals(1, cn.sent.size)
     }
 }

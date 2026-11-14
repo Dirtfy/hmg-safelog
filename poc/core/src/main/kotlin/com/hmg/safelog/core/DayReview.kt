@@ -1,6 +1,6 @@
 package com.hmg.safelog.core
 
-/** All trips of one day, for the driver's own review screen. */
+/** All trips of one day: the driver's review screen and the card sent to family after each trip. */
 data class DayReview(
     val trips: Int,
     val totalMs: Long,
@@ -22,7 +22,7 @@ data class DayReview(
     )
 
     /**
-     * What is sent when the driver explicitly says "보내기". Counts only:
+     * What is sent to the registered family automatically when a trip ends. Counts only:
      * no location, no route, no timestamps of individual trips, no raw pedal record.
      */
     fun shareCard(): String = (listOf("[세이프로그] 오늘 운전 요약") + lines()).joinToString("\n")

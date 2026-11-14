@@ -35,7 +35,8 @@ interface SignalSource {
 /** Anyone who can be notified (driver reminder / contact message). */
 data class Contact(val id: String, val name: String, val consented: Set<AlertCategory> = emptySet())
 
-enum class AlertCategory { AIRBAG_DEPLOYED, WARNING_TELLTALE }
+/** What a family contact agreed to receive, set once when the family is registered. */
+enum class AlertCategory { AIRBAG_DEPLOYED, WARNING_TELLTALE, TRIP_SUMMARY }
 
 interface ContactNotifier {
     fun notifyContact(contact: Contact, message: String)

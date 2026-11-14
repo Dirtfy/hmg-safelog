@@ -1,14 +1,17 @@
 package com.hmg.safelog.core
 
 /**
- * Consent-first sharing. Defaults: nothing is ever sent to contacts.
- *  (a) Driver-initiated share: only through [driverShare] (explicit call).
+ * Consent-first sharing. Nothing goes to a contact who has not agreed to that category at registration.
+ *  (a) Trip summary: sent automatically when a trip ends, to contacts with [AlertCategory.TRIP_SUMMARY].
+ *      The card holds counts only (see [DayReview.shareCard]): no location, no route.
  *  (b) Event alerts: only to contacts that consented to that category.
  */
 class SharePolicy(private val notifier: ContactNotifier) {
-    /** Explicit driver action: share a message with one chosen contact. */
-    fun driverShare(contact: Contact, message: String) {
-        notifier.notifyContact(contact, message)
+    /** Called at the end of every trip. Returns the contacts the card went to. */
+    fun onTripEnd(contacts: List<Contact>, card: String): List<Contact> {
+        val to = contacts.filter { AlertCategory.TRIP_SUMMARY in it.consented }
+        for (c in to) notifier.notifyContact(c, card)
+        return to
     }
 }
 

@@ -1,0 +1,333 @@
+#!/usr/bin/env python3
+"""Pleos Connect Emulator 녹화 v2: 차량 신호를 Virtual Console 웹 화면에서 '눌러서' 넣고, 그 조작 화면도 녹화한다.
+
+- Virtual Console(http://127.0.0.1:8088, adb forward)을 Xvfb 위의 실제 Chrome 창으로 띄우고(Playwright),
+  가속/브레이크 페달 패드를 누르고 떼고, P/R/N/D 버튼과 API 브라우저(경고등 TPMS)를 클릭한다.
+  페이지 자체 물리 계산이 속도를 만들고 페이지가 REST로 차량 쪽에 넘긴다(직접 REST 호출 없음).
+- 화면에는 마우스 위치를 보여 주는 점(누르면 노란색)을 페이지에 그린다. 조작은 Playwright 입력 이벤트.
+- 녹화: Pleos 화면 = adb emu screenrecord (scene_X.webm), 조작 화면 = ffmpeg x11grab (vc_X.mp4).
+- 앱 쪽 입력(그대로): 경고등 값(PRIVATE_CAR_SAFETY 권한 없음)·운전자 음성(마이크 없음)·화면 버튼은 am broadcast.
+결과: $OUT/scene_{A,B,C}.webm, vc_{A,B,C}.mp4, timeline.log, vc_speed.log, logcat.txt, app_frames/
+"""
+import os
+import subprocess
+import sys
+import time
+
+from playwright.sync_api import sync_playwright
+
+O = os.environ["OUT"]
+PKG = "com.hmg.safelog.poc"
+DISPLAY = os.environ.get("DISPLAY", ":99")
+VW, VH = 1280, 800
+TL = open(os.path.join(O, "timeline.log"), "a")
+SPD = open(os.path.join(O, "vc_speed.log"), "a")
+
+
+def ts(msg):
+    line = f"{time.time():.3f} {msg}"
+    print(line, flush=True)
+    TL.write(line + "\n"); TL.flush()
+
+
+def sh(cmd, timeout=60):
+    try:
+        return subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout).stdout
+    except subprocess.TimeoutExpired:
+        return ""
+
+
+def adb(cmd, timeout=60):
+    return sh(f"adb shell {cmd}", timeout)
+
+
+def voice(text):
+    ts(f"VOICE {text}")
+    adb(f"am broadcast -a {PKG}.VOICE --es text '\"{text}\"' -p {PKG}")
+
+
+def button(b):
+    ts(f"BUTTON {b}")
+    adb(f"am broadcast -a {PKG}.UI --es button {b} -p {PKG}")
+
+
+def front():
+    adb(f"am start -n {PKG}/com.hmg.safelog.app.LiveActivity")
+
+
+ffm = None
+
+
+def rec_start(scene):
+    global ffm
+    ts(f"REC_START {scene}")
+    ffm = subprocess.Popen(
+        ["ffmpeg", "-y", "-loglevel", "error", "-f", "x11grab", "-draw_mouse", "0", "-framerate", "15",
+         "-video_size", f"{VW}x{VH}", "-i", DISPLAY + ".0", "-c:v", "libx264", "-preset", "ultrafast",
+         "-pix_fmt", "yuv420p", os.path.join(O, f"vc_{scene}.mp4")],
+        stdin=subprocess.PIPE)
+    ts(f"VC_REC_START {scene}")
+    sh(f"adb emu screenrecord start --time-limit 170 {O}/scene_{scene}.webm", 20)
+    ts(f"EMU_REC_START {scene}")
+
+
+def rec_stop(scene):
+    sh("adb emu screenrecord stop", 20)
+    ts(f"EMU_REC_STOP {scene}")
+    ffm.communicate(b"q", timeout=30)
+    ts(f"REC_STOP {scene}")
+    time.sleep(2)
+
+
+CURSOR_JS = """
+(() => {
+  const add = () => {
+    if (document.getElementById('__cur')) return;
+    const c = document.createElement('div');
+    c.id = '__cur';
+    c.style.cssText = 'position:fixed;z-index:2147483647;left:-50px;top:-50px;width:30px;height:30px;' +
+      'margin:-15px 0 0 -15px;border-radius:50%;border:4px solid #fff;background:rgba(255,64,129,.6);' +
+      'box-shadow:0 0 10px #000;pointer-events:none;transition:transform .08s,background .08s';
+    document.body.appendChild(c);
+    const mv = e => { c.style.left = e.clientX + 'px'; c.style.top = e.clientY + 'px'; };
+    document.addEventListener('pointermove', mv, true);
+    document.addEventListener('mousemove', mv, true);
+    document.addEventListener('pointerdown', () => { c.style.transform = 'scale(1.7)'; c.style.background = 'rgba(255,214,0,.85)'; }, true);
+    document.addEventListener('pointerup', () => { c.style.transform = ''; c.style.background = 'rgba(255,64,129,.6)'; }, true);
+  };
+  if (document.body) add(); else document.addEventListener('DOMContentLoaded', add);
+})();
+"""
+
+
+class Console:
+    """Virtual Console 화면 조작. 속도는 페이지의 vehicle.speed_kph(페이지 물리 계산 값)."""
+
+    def __init__(self, page):
+        self.page = page
+        self.m = page.mouse
+        self.pressed = None
+        self.x, self.y = VW / 2, VH / 2
+
+    def speed(self):
+        try:
+            v = float(self.page.evaluate("vehicle.speed_kph"))
+        except Exception:
+            v = float(self.page.inner_text("#speedValue") or 0)
+        SPD.write(f"{time.time():.3f} {v:.2f}\n")
+        return v
+
+    def center(self, sel):
+        b = self.page.locator(sel).first.bounding_box()
+        return b["x"] + b["width"] / 2, b["y"] + b["height"] / 2
+
+    def move(self, sel, steps=14):
+        x, y = self.center(sel)
+        self.m.move(x, y, steps=steps)
+        self.x, self.y = x, y
+
+    def click(self, sel, label):
+        ts(f"VC_CLICK {label}")
+        self.move(sel)
+        time.sleep(0.25)
+        self.m.down(); time.sleep(0.15); self.m.up()
+
+    def gear(self, g):
+        self.click(f"#gearButtons button[title='{g}']", f"gear {g}")
+        time.sleep(0.6)
+
+    def _set(self, pad):
+        """pad: None | 'accel' | 'brake' — press/release with the mouse on the pad."""
+        if pad == self.pressed:
+            return
+        if self.pressed is not None:
+            self.m.up()
+        self.pressed = pad
+        if pad is not None:
+            self.move("#acceleratorPad" if pad == "accel" else "#brakePad", steps=4)
+            self.m.down()
+
+    def follow(self, profile, seconds, tag):
+        """profile(t) -> desired km/h. Bang-bang on the pads every 100 ms, as a person would ease a pedal."""
+        ts(f"VC_DRIVE {tag} start={self.speed():.1f}")
+        t0 = time.time()
+        while time.time() - t0 < seconds:
+            want, v = profile(time.time() - t0), self.speed()
+            if v < want - 0.3:
+                pad = "accel"
+            elif v > want + 2.0:
+                pad = "brake"
+            else:
+                pad = None
+            # 가속 페달은 '조금씩': 누르고 있는 시간을 짧게 끊는다(페이지는 누르면 100%까지 올라감)
+            self._set(pad)
+            time.sleep(0.1)
+            if pad == "accel":
+                self._set(None)
+                time.sleep(0.05)
+        self._set(None)
+        ts(f"VC_DRIVE_END {tag} v={self.speed():.1f}")
+
+    def drive_to(self, target, rate=3.5, hold=0.0, tag="drive"):
+        v0 = self.speed()
+        up = abs(target - v0) / rate
+        sign = 1 if target >= v0 else -1
+        self.follow(lambda t: v0 + sign * min(up, t) * rate, up + hold, f"{tag} {v0:.0f}->{target}")
+
+    def stop(self, rate=5.0, tag="stop"):
+        v0 = self.speed()
+        self.drive_to(0, rate=rate, tag=tag)
+        # 완전 정지까지 브레이크
+        self._set("brake")
+        t0 = time.time()
+        while self.speed() > 0.2 and time.time() - t0 < 8:
+            time.sleep(0.1)
+        time.sleep(0.5)
+        self._set(None)
+        ts(f"VC_STOPPED {tag} from {v0:.0f}")
+
+    def hold(self, pad, until=None, max_s=5.0, tag=""):
+        """한 페달을 계속 밟고 있기(오조작 장면)."""
+        ts(f"VC_HOLD {pad} {tag}")
+        self._set(pad)
+        t0 = time.time()
+        while time.time() - t0 < max_s:
+            v = self.speed()
+            if until is not None and until(v):
+                break
+            time.sleep(0.05)
+        self._set(None)
+        ts(f"VC_RELEASE {pad} v={self.speed():.1f}")
+
+    def telltale(self, area_label, value_label):
+        p = self.page
+        self.click("#apiBrowserOpen", "API browser")
+        time.sleep(0.8)
+        self.move("#apiSearch")
+        self.m.down(); self.m.up()
+        p.keyboard.type("Telltale", delay=90)
+        time.sleep(0.8)
+        card = p.locator("article.api-card", has=p.locator("h3", has_text="Telltales")).first
+        sel = card.locator("select.api-area")
+        x, y = self.center_of(sel)
+        self.m.move(x, y, steps=10)
+        ts(f"VC_SELECT telltale area {area_label}")
+        sel.select_option(label=area_label)
+        time.sleep(0.8)
+        card = p.locator("article.api-card", has=p.locator("h3", has_text="Telltales")).first
+        btn = card.locator("button.api-action", has_text=value_label).first
+        x, y = self.center_of(btn)
+        self.m.move(x, y, steps=10)
+        time.sleep(0.2)
+        ts(f"VC_CLICK telltale {area_label} {value_label}")
+        self.m.down(); time.sleep(0.12); self.m.up()
+        time.sleep(1.8)
+        try:
+            ts("VC_TELLTALE_STATUS " + card.locator(".api-status").inner_text())
+        except Exception as e:
+            ts(f"VC_TELLTALE_STATUS ? {e}")
+        p.keyboard.press("Escape")
+        ts("VC_API_BROWSER_CLOSED")
+
+    @staticmethod
+    def center_of(loc):
+        b = loc.bounding_box()
+        return b["x"] + b["width"] / 2, b["y"] + b["height"] / 2
+
+
+def main():
+    with sync_playwright() as pw:
+        br = pw.chromium.launch(
+            channel="chrome", headless=False,
+            args=["--kiosk", f"--window-size={VW},{VH}", "--window-position=0,0", "--no-first-run",
+                  "--disable-infobars", "--noerrdialogs", "--disable-session-crashed-bubble", "--hide-scrollbars"])
+        ctx = br.new_context(no_viewport=True)
+        ctx.add_init_script(CURSOR_JS)
+        page = ctx.new_page()
+        page.goto("http://127.0.0.1:8088/", wait_until="load")
+        time.sleep(6)
+        vc = Console(page)
+        page.screenshot(path=os.path.join(O, "vc_loaded.png"))
+        # 테마: 3D 고속도로(WebGL)는 GPU 없는 러너에서 무거우므로 2D(Forest)로. P에서만 바뀜
+        theme = page.inner_text("#themeToggle")
+        ts(f"VC_THEME {theme}")
+        if "Highway" in theme:
+            vc.click("#themeToggle", "theme Forest")
+            time.sleep(2)
+        page.screenshot(path=os.path.join(O, "vc_ready.png"))
+        ts(f"VC_VIEWPORT {page.evaluate('[innerWidth, innerHeight]')}")
+
+        vc.gear("Park")
+        ts("READY")
+
+        # ---------------- 장면 A: 아침 병원 가는 길 · 주행 중 경고등(TPMS) → 쉬운 말 해설 → "응" → 정비소 경유지
+        front(); time.sleep(3)
+        rec_start("A")
+        time.sleep(2)
+        vc.gear("Drive")
+        time.sleep(1)
+        vc.drive_to(40, rate=3.0, hold=3, tag="A start")
+        vc.telltale("TPMS", "On")
+        # 서드파티 앱은 경고등 API 권한(PRIVATE_CAR_SAFETY)이 없어 같은 값을 앱에 직접 넘긴다
+        ts("APP_TELLTALE TPMS On")
+        adb(f"am broadcast -a {PKG}.TELLTALE --es type TPMS --ez on true -p {PKG}")
+        vc.drive_to(40, rate=3.0, hold=10, tag="A cruise")
+        voice("응, 안내해 줘")
+        vc.drive_to(40, rate=3.0, hold=7, tag="A cruise2")
+        page.screenshot(path=os.path.join(O, "vcA_end.png"))
+        ts("FRONT"); front()
+        vc.drive_to(40, rate=3.0, hold=4, tag="A cruise3")
+        rec_stop("A")
+        # 녹화 밖: 병원까지 계속 주행 후 주차(거리·시간이 돌아보기 요약에 들어감)
+        for i in range(4):
+            vc.drive_to(45, rate=3.0, hold=25, tag=f"A road {i}")
+            front()
+        vc.stop(rate=4.0, tag="A arrive")
+        vc.gear("Park")
+        time.sleep(5)
+
+        # ---------------- 장면 B: 낮, 마트 주차장 후진 · 페달 오조작 의심
+        front(); time.sleep(3)
+        rec_start("B")
+        time.sleep(3)
+        vc.gear("Reverse")
+        time.sleep(4)
+        # 브레이크 대신 가속 페달을 꾹(후진) — 페이지 물리: 후진은 가속 0.45배
+        vc.hold("accel", until=lambda v: v >= 15, max_s=3.5, tag="wrong pedal")
+        vc.hold("brake", until=lambda v: v <= 0.2, max_s=4, tag="brake")
+        time.sleep(1)
+        vc.gear("Park")
+        time.sleep(5)
+        page.screenshot(path=os.path.join(O, "vcB_parked.png"))
+        sh(f"adb exec-out screencap -p > {O}/sB_parked.png", 30)
+        button("record")
+        time.sleep(11)
+        sh(f"adb exec-out screencap -p > {O}/sB_record.png", 30)
+        button("close")
+        time.sleep(2)
+        rec_stop("B")
+
+        # ---------------- 장면 C: 저녁, 집에 도착 → 주차하면 오늘 요약이 가족에게 자동으로 감 → 돌아보기
+        vc.gear("Drive")
+        vc.drive_to(30, rate=3.0, hold=40, tag="C road")
+        front(); time.sleep(1)
+        rec_start("C")
+        vc.drive_to(30, rate=3.0, hold=4, tag="C near home")
+        vc.stop(rate=4.0, tag="C home")
+        time.sleep(1)
+        vc.gear("Park")
+        time.sleep(7)
+        button("review")
+        time.sleep(11)
+        page.screenshot(path=os.path.join(O, "vcC_end.png"))
+        sh(f"adb exec-out screencap -p > {O}/sC_sent.png", 30)
+        rec_stop("C")
+        ctx.close(); br.close()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        ts(f"ERROR {e!r}")
+        raise
