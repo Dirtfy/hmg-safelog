@@ -66,4 +66,26 @@ class SceneACTest {
         assertTrue(card.contains("타이어 공기압 낮음"))
         for (w in listOf("위치", "경로", "주소", "위도", "경도")) assertFalse(card.contains(w), w)
     }
+
+    @Test
+    fun jitteryGentleBrakingIsNotHardBraking() {
+        // 50 -> 0 km/h over 10 s (5 km/h/s) with events bunched 20 ms apart, like the Pleos emulator delivers them
+        val clock = object : Clock {
+            override fun nowMs() = 0L
+            override fun localHour(epochMs: Long) = 12
+        }
+        val trips = ArrayList<TripSummary>()
+        val tt = TripTracker(clock) { trips += it }
+        var t = 0L
+        tt.onSample(Sample(t, 0.0, true, Gear.PARK))
+        t += 1_000; tt.onSample(Sample(t, 50.0, false, Gear.DRIVE))
+        var v = 50.0
+        while (v > 0) {
+            t += 180; tt.onSample(Sample(t, v, true, Gear.DRIVE))
+            t += 20; v -= 1.0; tt.onSample(Sample(t, v, true, Gear.DRIVE)) // 1 km/h in 20 ms = -50 km/h/s per pair
+        }
+        t += 500; tt.onSample(Sample(t, 0.0, true, Gear.PARK))
+        assertEquals(1, trips.size)
+        assertEquals(0, trips[0].hardBrakeCount)
+    }
 }

@@ -4,6 +4,7 @@ data class TripConfig(
     val hardAccelKphPerS: Double = 10.0,
     val hardBrakeKphPerS: Double = -12.0,
     val maxGapMs: Long = 2_000,
+    val rateWindowMs: Long = 1_000,
     val nightStartHour: Int = 22,
     val nightEndHour: Int = 6,
 )
@@ -44,6 +45,9 @@ class TripTracker(
     private var nightMs = 0L
     private var inHardAccel = false
     private var inHardBrake = false
+    /** Acceleration is measured over >= rateWindowMs: real signals arrive with jitter (two speed events can be
+     *  20 ms apart on the Pleos emulator), and a per-sample rate turned that jitter into fake hard brakes. */
+    private var rateRef: Sample? = null
 
     var lastSummary: TripSummary? = null
         private set
@@ -74,6 +78,7 @@ class TripTracker(
         nightMs = 0
         inHardAccel = false
         inHardBrake = false
+        rateRef = null
     }
 
     private fun accumulate(p: Sample, s: Sample) {
@@ -88,13 +93,22 @@ class TripTracker(
                 h >= config.nightStartHour && h < config.nightEndHour
             }
             if (night) nightMs += dt
-            val rate = (s.speedKph - p.speedKph) / (dt / 1000.0)
-            val accel = rate >= config.hardAccelKphPerS && !s.brake
-            val brake = rate <= config.hardBrakeKphPerS
-            if (accel && !inHardAccel) hardAccel++
-            if (brake && !inHardBrake) hardBrake++
-            inHardAccel = accel
-            inHardBrake = brake
+            val ref = rateRef ?: p
+            val span = s.tMs - ref.tMs
+            if (span >= config.rateWindowMs) {
+                val rate = (s.speedKph - ref.speedKph) / (span / 1000.0)
+                val accel = rate >= config.hardAccelKphPerS && !s.brake
+                val brake = rate <= config.hardBrakeKphPerS
+                if (accel && !inHardAccel) hardAccel++
+                if (brake && !inHardBrake) hardBrake++
+                inHardAccel = accel
+                inHardBrake = brake
+                rateRef = s
+            } else if (rateRef == null) {
+                rateRef = p
+            }
+        } else {
+            rateRef = s
         }
     }
 

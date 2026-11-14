@@ -37,7 +37,7 @@ a settings put secure immersive_mode_confirmations confirmed
 $VC gear Park; $VC controls 0 0 100
 adb logcat -c
 timeout 600 adb logcat -v epoch > "$O/logcat.txt" 2>&1 &
-a am start -W -n $PKG/com.hmg.safelog.app.LiveActivity --ez route true > "$O/am_start.txt"
+a am start -W -n $PKG/com.hmg.safelog.app.LiveActivity --ez route true --ez frames true > "$O/am_start.txt"
 sleep 20
 grep "VIEW_BOUNDS" "$O/logcat.txt" | sed 's/.*VIEW_BOUNDS //' | awk '$3>0 && $4>0' | tail -1 > "$O/view_bounds.txt"; cat "$O/view_bounds.txt"
 timeout 30 adb exec-out screencap -p > "$O/s00_start.png"
@@ -47,7 +47,7 @@ rec_start A
 sleep 2
 $VC gear Drive; sleep 1.5
 $VC controls 0 0 0; sleep 0.5
-$VC ramp 0 40 5 30 0
+$VC ramp 0 40 16 20 0
 sleep 3
 ts "TELLTALE TPMS On"; $VC telltale TPMS On
 # 서드파티 앱은 경고등 API 권한(PRIVATE_CAR_SAFETY)이 없어 같은 값을 앱에 직접 넘긴다
@@ -61,9 +61,9 @@ ts "FRONT"; a am start -n $PKG/com.hmg.safelog.app.LiveActivity > /dev/null
 sleep 4
 rec_stop A
 # 녹화 밖: 병원까지 계속 주행(거리·시간이 돌아보기 요약에 들어감) 후 주차
-$VC ramp 40 50 3 30 0
+$VC ramp 40 50 6 20 0
 for i in 1 2 3 4; do sleep 30; a am start -n $PKG/com.hmg.safelog.app.LiveActivity > /dev/null; done
-$VC ramp 50 0 6 0 60
+$VC ramp 50 0 12 0 40
 $VC controls 0 0 100; sleep 1; $VC gear Park; sleep 4
 grep "VIEW_BOUNDS" "$O/logcat.txt" | sed 's/.*VIEW_BOUNDS //' | awk '$3>0 && $4>0' | tail -1 > "$O/view_bounds.txt"; cat "$O/view_bounds.txt"
 
@@ -75,9 +75,9 @@ ts "GEAR R"; $VC gear Reverse
 sleep 5
 ts "BRAKE OFF"; $VC controls 0 0 0
 sleep 2
-ts "ACCEL (wrong pedal)"; $VC ramp 0 13 1.0 45 0
+ts "ACCEL (wrong pedal)"; $VC ramp 0 15 1.0 60 0
 sleep 1.5
-ts "BRAKE ON"; $VC controls 13 0 100; $VC ramp 13 0 2.4 0 100
+ts "BRAKE ON"; $VC controls 15 0 100; $VC ramp 15 0 3.0 0 100
 sleep 2
 ts "GEAR P"; $VC gear Park
 sleep 4
@@ -101,6 +101,8 @@ timeout 30 adb exec-out screencap -p > "$O/sC_sent.png"
 rec_stop C
 
 $VC state > "$O/state_end.json"
+# 앱이 그린 화면(주행 중 Pleos가 가려도 앱은 계속 그림) 가져오기
+timeout 120 adb exec-out run-as $PKG tar cf - files/frames > "$O/app_frames.tar" 2>> "$O/rec.log"; ls -la "$O/app_frames.tar"
 sleep 2
 kill %1 2>/dev/null; kill $HB 2>/dev/null
 grep -E " SafeLog|NaviHelper|Navi|TextToSpeech|pleos" "$O/logcat.txt" | grep -viE "dexopt" > "$O/logcat_app.txt"

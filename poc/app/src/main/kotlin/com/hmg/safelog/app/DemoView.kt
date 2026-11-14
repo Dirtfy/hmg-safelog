@@ -61,22 +61,28 @@ class DemoView(context: Context) : View(context) {
     private val p = Paint(Paint.ANTI_ALIAS_FLAG)
     private val tp = TextPaint(Paint.ANTI_ALIAS_FLAG)
 
-    fun setMode(m: Mode) { modeSince = clock(); mode = m; postInvalidate() }
-    fun setRecord(r: EventRecord) { record = r }
-    fun setTrip(t: TripSummary) { trip = t }
-    fun setAdvice(a: TelltaleAdvice?) { advice = a; postInvalidate() }
-    fun setNaviStatus(s: String) { naviStatus = s; postInvalidate() }
-    fun setDriverSaid(s: String) { driverSaid = s; postInvalidate() }
-    fun setDay(d: DayReview) { day = d; sentCard = null; postInvalidate() }
-    fun setSent(card: String) { sentCard = card; postInvalidate() }
+    /** Offscreen copy that receives every state change (LiveActivity saves it as frames). */
+    var mirror: DemoView? = null
+
+    fun setMode(m: Mode) { modeSince = clock(); mode = m; postInvalidate(); mirror?.setMode(m) }
+    fun setRecord(r: EventRecord) { record = r; mirror?.setRecord(r) }
+    fun setTrip(t: TripSummary) { trip = t; mirror?.setTrip(t) }
+    fun setAdvice(a: TelltaleAdvice?) { advice = a; postInvalidate(); mirror?.setAdvice(a) }
+    fun setNaviStatus(s: String) { naviStatus = s; postInvalidate(); mirror?.setNaviStatus(s) }
+    fun setDriverSaid(s: String) { driverSaid = s; postInvalidate(); mirror?.setDriverSaid(s) }
+    fun setDay(d: DayReview) { day = d; sentCard = null; postInvalidate(); mirror?.setDay(d) }
+    fun setSent(card: String) { sentCard = card; postInvalidate(); mirror?.setSent(card) }
+    fun setParked(on: Boolean) { parkedButtons = on; mirror?.setParked(on) }
 
     fun onSignals(g: Gear, kph: Double, b: Boolean, tt: List<WarningTelltale>) {
+        mirror?.onSignals(g, kph, b, tt)
         gear = g; speed = kph; brake = b; telltales = tt
         if (b && alertAt != 0L && clock() - alertAt > 300) bannerOff = true
         postInvalidate()
     }
 
     fun onUtterance(text: String) {
+        mirror?.onUtterance(text)
         utterance = text
         if (text == pedalMessage) {
             bannerText = text
