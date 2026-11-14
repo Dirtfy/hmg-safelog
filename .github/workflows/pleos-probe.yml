@@ -18,8 +18,12 @@ jobs:
       OUT: ${{ github.workspace }}/pleos-out
     steps:
       - uses: actions/checkout@v4
-      - name: Disk
-        run: df -h / /mnt; free -g; nproc
+      - name: Free disk
+        run: |
+          df -h / /mnt || true
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/share/swift /usr/local/lib/node_modules /opt/microsoft /usr/local/share/powershell || true
+          sudo docker image prune -af > /dev/null 2>&1 || true
+          df -h / /mnt || true; free -g; nproc
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -29,33 +33,27 @@ jobs:
           gradle-version: 8.9
       - name: Assemble debug APK
         run: gradle -p poc :app:assembleDebug --no-daemon
-      - name: Restore Pleos image cache
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: /mnt/pleos/crp_car_emulator.zip
-          key: pleos-crp-sysimg-${{ env.IMG_SHA1 }}
       - name: Download Pleos Connect Emulator image
-        if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          sudo mkdir -p /mnt/pleos && sudo chown $USER /mnt/pleos
-          time curl -fSL --retry 3 -o /mnt/pleos/crp_car_emulator.zip "$IMG_URL"
-          echo "$IMG_SHA1  /mnt/pleos/crp_car_emulator.zip" | sha1sum -c
+          mkdir -p $HOME/pleos
+          time curl -fSL --retry 3 -o $HOME/pleos/img.zip "$IMG_URL"
+          echo "$IMG_SHA1  $HOME/pleos/img.zip" | sha1sum -c
+          df -h /
       - name: Install image
         run: |
           set -x
           mkdir -p "$OUT"
-          sudo mkdir -p /mnt/pleos && sudo chown $USER /mnt/pleos
-          cd /mnt/pleos && rm -rf x && mkdir x && cd x
-          unzip -q ../crp_car_emulator.zip
+          cd $HOME/pleos && rm -rf x && mkdir x && cd x
+          unzip -q ../img.zip && rm -f ../img.zip
+          df -h / | tee "$OUT/df.txt"
+          du -sh . | tee -a "$OUT/df.txt"
           find . -maxdepth 3 | head -50 | tee "$OUT/zip_layout.txt"
           SP=$(dirname "$(find . -name source.properties | head -1)")
           cat "$SP/source.properties" | tee "$OUT/source.properties"
           D=$ANDROID_HOME/system-images/android-34/pleos_car_emulator
           sudo mkdir -p "$D" && sudo chown -R $USER "$ANDROID_HOME/system-images"
-          rm -rf "$D/x86_64"; ln -s "/mnt/pleos/x/$SP" "$D/x86_64"
+          rm -rf "$D/x86_64"; ln -s "$HOME/pleos/x/$SP" "$D/x86_64"
           ls -la "$D/x86_64/" | tee "$OUT/img_files.txt"
-          rm -f ../crp_car_emulator.zip.unused
       - name: Update emulator + create AVD
         run: |
           set -x
