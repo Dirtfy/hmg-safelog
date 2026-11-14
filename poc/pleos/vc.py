@@ -109,7 +109,7 @@ def wait_ready(timeout=180):
 
 def frame_server(dest, port=9099):
     """앱이 POST하는 프레임(JPEG)을 dest/<epoch ms>.jpg로 저장 (adb reverse tcp:9099 tcp:9099)."""
-    from http.server import BaseHTTPRequestHandler, HTTPServer
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
     os.makedirs(dest, exist_ok=True)
 
     class H(BaseHTTPRequestHandler):
@@ -125,7 +125,7 @@ def frame_server(dest, port=9099):
 
         def log_message(self, *a):
             pass
-    HTTPServer(("127.0.0.1", port), H).serve_forever()
+    ThreadingHTTPServer(("127.0.0.1", port), H).serve_forever()
 
 
 def main():

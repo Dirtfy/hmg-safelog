@@ -172,41 +172,53 @@ object LiveSession {
     }
 
     // ------------------------------------------------------------------ signals
+    /** Gear/brake (Pleos SDK binder threads) and speed (car thread) arrive concurrently; the engine is not
+     *  thread-safe — two threads ending the same trip counted it twice on the Pleos emulator. */
+    private val engineLock = Any()
+
     private val listener = object : SignalListener {
         override fun onSpeed(tMs: Long, kph: Double) {
-            if (Math.abs(kph - LiveSession.kph) >= 1.0) log("SIG kph=${"%.1f".format(kph)}")
-            LiveSession.kph = kph
-            engine.onSpeed(tMs, kph)
-            refresh()
+            synchronized(engineLock) {
+                if (Math.abs(kph - LiveSession.kph) >= 1.0) log("SIG kph=${"%.1f".format(kph)}")
+                LiveSession.kph = kph
+                engine.onSpeed(tMs, kph)
+                refresh()
+            }
         }
 
         override fun onBrake(tMs: Long, pressed: Boolean) {
-            if (pressed != brake) log("SIG brake=$pressed")
-            brake = pressed
-            engine.onBrake(tMs, pressed)
-            refresh()
+            synchronized(engineLock) {
+                if (pressed != brake) log("SIG brake=$pressed")
+                brake = pressed
+                engine.onBrake(tMs, pressed)
+                refresh()
+            }
         }
 
         override fun onGear(tMs: Long, gear: Gear) {
-            if (gear != LiveSession.gear) log("SIG gear=$gear")
-            LiveSession.gear = gear
-            if (gear == Gear.PARK) { offer = null; view.setAdvice(null) }
-            engine.onGear(tMs, gear)
-            // gear change is also a sample point, so parking prompts don't wait for the next speed tick
-            engine.onSpeed(tMs, kph)
-            refresh()
+            synchronized(engineLock) {
+                if (gear != LiveSession.gear) log("SIG gear=$gear")
+                LiveSession.gear = gear
+                if (gear == Gear.PARK) { offer = null; view.setAdvice(null) }
+                engine.onGear(tMs, gear)
+                // gear change is also a sample point, so parking prompts don't wait for the next speed tick
+                engine.onSpeed(tMs, kph)
+                refresh()
+            }
         }
 
-        override fun onAirbagDeployed(tMs: Long) = engine.onAirbagDeployed(tMs)
+        override fun onAirbagDeployed(tMs: Long) = synchronized(engineLock) { engine.onAirbagDeployed(tMs) }
 
         override fun onTelltales(tMs: Long, readings: List<TelltaleReading>) {
-            val on = readings.filter { it.on }.map { it.type }.toSet()
-            if (on != telltalesOn) log("SIG telltales=$on")
-            synchronized(telltalesOn) { telltalesOn.clear(); telltalesOn.addAll(on) }
-            engine.onTelltales(tMs, readings)
-            explainer.onTelltales(tMs, readings)
-            if (on.isEmpty()) { view.setAdvice(null); offer = null }
-            refresh()
+            synchronized(engineLock) {
+                val on = readings.filter { it.on }.map { it.type }.toSet()
+                if (on != telltalesOn) log("SIG telltales=$on")
+                synchronized(telltalesOn) { telltalesOn.clear(); telltalesOn.addAll(on) }
+                engine.onTelltales(tMs, readings)
+                explainer.onTelltales(tMs, readings)
+                if (on.isEmpty()) { view.setAdvice(null); offer = null }
+                refresh()
+            }
         }
     }
 
@@ -349,7 +361,7 @@ object LiveSession {
     private var frameThread: android.os.HandlerThread? = null
 
     /**
-     * Saves what SafeLog draws (960x540 JPEG, 4 fps, file name = epoch ms) even while Pleos hides the activity
+     * Saves what SafeLog draws (800x450 JPEG, 4 fps, file name = epoch ms) even while Pleos hides the activity
      * during driving. The video shows these next to the real Pleos screen. Pull: run-as ... files/frames
      */
     private fun startFrames(frameUrl: String?) {
@@ -365,19 +377,19 @@ object LiveSession {
         val t = android.os.HandlerThread("safelog-frames").also { it.start() }
         frameThread = t
         val h = Handler(t.looper)
-        val bmp = android.graphics.Bitmap.createBitmap(960, 540, android.graphics.Bitmap.Config.ARGB_8888)
-        val canvas = android.graphics.Canvas(bmp).apply { scale(0.5f, 0.5f) }
+        val bmp = android.graphics.Bitmap.createBitmap(800, 450, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bmp).apply { scale(800f / 1920f, 800f / 1920f) }
         h.post(object : Runnable {
             override fun run() {
                 try {
                     shadow.draw(canvas)
                     val name = "${System.currentTimeMillis()}.jpg"
                     val out = java.io.ByteArrayOutputStream()
-                    bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, out)
+                    bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, out)
                     if (frameUrl != null) {
                         // test rig: POST to a receiver on the host (adb reverse); app storage is per Android user
                         val c = java.net.URL(frameUrl + name).openConnection() as java.net.HttpURLConnection
-                        c.requestMethod = "POST"; c.doOutput = true; c.connectTimeout = 1000; c.readTimeout = 1000
+                        c.requestMethod = "POST"; c.doOutput = true; c.connectTimeout = 2000; c.readTimeout = 3000
                         c.outputStream.use { it.write(out.toByteArray()) }
                         c.responseCode
                         c.disconnect()
