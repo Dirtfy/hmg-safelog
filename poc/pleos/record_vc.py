@@ -182,7 +182,14 @@ class Console:
             ok_app = self.app_saw_gear(want, t0, 12)
             if hold:
                 time.sleep(0.5)
+                t_rel = time.time()
                 self.pad("brakePad", False, False)
+                # 패드를 떼도 차량 쪽 '브레이크 밟음'이 풀리지 않은 채 남은 적이 있어(앱이 주행 내내 '밟음'),
+                # 3초 안에 앱이 brake=false를 못 받으면 Virtual Console REST로 정지·브레이크 0을 한 번 맞춘다
+                if not self.app_saw("SIG brake=false", t_rel, 3):
+                    ts("VC_REST_SYNC controls speed=0 accel=0 brake=0 (brake release not received)")
+                    sh("python3 poc/pleos/vc.py controls 0 0 0")
+                    ts(f"VC_REST_SYNC app_brake_false={self.app_saw('SIG brake=false', t_rel, 4)}")
             st = self.page.evaluate("[currentGear, document.getElementById('gearStatus').textContent]")
             ts(f"VC_GEAR_NOW {st} app={ok_app}")
             if ok_page and ok_app:
@@ -191,11 +198,15 @@ class Console:
 
     @staticmethod
     def app_saw_gear(want, since, timeout):
+        return Console.app_saw(f"SIG gear={want}", since, timeout)
+
+    @staticmethod
+    def app_saw(pat, since, timeout):
         end = time.time() + timeout
         while time.time() < end:
             try:
                 for ln in open(os.path.join(O, "logcat.txt"), errors="replace"):
-                    if f"SIG gear={want}" in ln and float(ln.split()[0]) >= since - 0.5:
+                    if pat in ln and float(ln.split()[0]) >= since - 0.5:
                         return True
             except (OSError, ValueError, IndexError):
                 pass
