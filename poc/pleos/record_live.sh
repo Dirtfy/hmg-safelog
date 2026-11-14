@@ -7,7 +7,7 @@ PKG=com.hmg.safelog.poc
 VC="python3 poc/pleos/vc.py"
 a() { timeout 60 adb shell "$@" 2>&1; }
 ts() { echo "$(date +%s.%N) $*" | tee -a "$O/timeline.log"; }
-rec_start() { ts "REC_START $1"; timeout 20 adb emu screenrecord start --time-limit 170 --fps 24 "$O/scene_$1.webm" >> "$O/rec.log" 2>&1; }
+rec_start() { ts "REC_START $1"; timeout 20 adb emu screenrecord start --time-limit 170 "$O/scene_$1.webm" >> "$O/rec.log" 2>&1; }
 rec_stop() { timeout 20 adb emu screenrecord stop >> "$O/rec.log" 2>&1; ts "REC_STOP $1"; sleep 3; }
 voice() { ts "VOICE $1"; a am broadcast -a $PKG.VOICE --es text "\"$1\"" -p $PKG > /dev/null; }
 tap() { # 1920x1080 layout unit -> screen px using VIEW_BOUNDS
