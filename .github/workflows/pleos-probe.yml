@@ -1,0 +1,93 @@
+name: pleos-probe
+# Pleos Connect Emulator 2.1.0 (공식 시스템 이미지)를 KVM 러너에서 띄워 보는 실험용 워크플로.
+# 이미지는 Pleos 공식 SDK 사이트(nexus-playground.pleos.ai)에서 받으며 아티팩트로 재배포하지 않는다.
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: 'script to run after boot (poc/pleos/*.sh)'
+        default: 'poc/pleos/probe.sh'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      IMG_URL: https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp_car_emulator.zip
+      IMG_SHA1: b4f858d5bcc6c71506d7edfc872bcb9e5a11acaa
+      OUT: ${{ github.workspace }}/pleos-out
+    steps:
+      - uses: actions/checkout@v4
+      - name: Disk
+        run: df -h / /mnt; free -g; nproc
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+      - name: Assemble debug APK
+        run: gradle -p poc :app:assembleDebug --no-daemon
+      - name: Restore Pleos image cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: /mnt/pleos/crp_car_emulator.zip
+          key: pleos-crp-sysimg-${{ env.IMG_SHA1 }}
+      - name: Download Pleos Connect Emulator image
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo mkdir -p /mnt/pleos && sudo chown $USER /mnt/pleos
+          time curl -fSL --retry 3 -o /mnt/pleos/crp_car_emulator.zip "$IMG_URL"
+          echo "$IMG_SHA1  /mnt/pleos/crp_car_emulator.zip" | sha1sum -c
+      - name: Install image
+        run: |
+          set -x
+          mkdir -p "$OUT"
+          sudo mkdir -p /mnt/pleos && sudo chown $USER /mnt/pleos
+          cd /mnt/pleos && rm -rf x && mkdir x && cd x
+          unzip -q ../crp_car_emulator.zip
+          find . -maxdepth 3 | head -50 | tee "$OUT/zip_layout.txt"
+          SP=$(dirname "$(find . -name source.properties | head -1)")
+          cat "$SP/source.properties" | tee "$OUT/source.properties"
+          D=$ANDROID_HOME/system-images/android-34/pleos_car_emulator
+          sudo mkdir -p "$D" && sudo chown -R $USER "$ANDROID_HOME/system-images"
+          rm -rf "$D/x86_64"; ln -s "/mnt/pleos/x/$SP" "$D/x86_64"
+          ls -la "$D/x86_64/" | tee "$OUT/img_files.txt"
+          rm -f ../crp_car_emulator.zip.unused
+      - name: Update emulator + create AVD
+        run: |
+          set -x
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install emulator platform-tools > /dev/null
+          $ANDROID_HOME/emulator/emulator -version | head -1 | tee "$OUT/emulator_version.txt"
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+          export ANDROID_AVD_HOME=$HOME/.android/avd; mkdir -p $ANDROID_AVD_HOME
+          echo no | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n pleos -k "system-images;android-34;pleos_car_emulator;x86_64" --force
+          C=$ANDROID_AVD_HOME/pleos.avd/config.ini
+          sed -i '/^hw.ramSize/d;/^fastboot.forceColdBoot/d;/^hw.gpu/d' $C
+          printf 'hw.ramSize=4096\nfastboot.forceColdBoot=yes\nhw.gpu.enabled=yes\nhw.gpu.mode=swiftshader_indirect\n' >> $C
+          cat $C | tee "$OUT/avd_config.ini"
+      - name: Boot + run script
+        run: |
+          export ANDROID_AVD_HOME=$HOME/.android/avd
+          nohup $ANDROID_HOME/emulator/emulator -avd pleos -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim -noaudio -camera-back none -camera-front none -verbose > "$OUT/emulator.log" 2>&1 &
+          export PATH=$ANDROID_HOME/platform-tools:$PATH
+          timeout 900 adb wait-for-device
+          t=0; until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] || [ $t -ge 1200 ]; do sleep 5; t=$((t+5)); done
+          echo "boot wait ${t}s" | tee "$OUT/boot.txt"
+          bash "${{ github.event.inputs.script }}"
+      - name: Collect
+        if: always()
+        run: |
+          export PATH=$ANDROID_HOME/platform-tools:$PATH
+          adb logcat -d > "$OUT/logcat_final.txt" 2>/dev/null || true
+          adb emu kill || true
+          tail -200 "$OUT/emulator.log" > "$OUT/emulator_tail.log" 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pleos-out
+          path: pleos-out/
