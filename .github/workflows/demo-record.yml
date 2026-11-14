@@ -1,10 +1,6 @@
 name: demo-record
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'poc/**'
-      - '.github/workflows/demo-record.yml'
 
 jobs:
   record:

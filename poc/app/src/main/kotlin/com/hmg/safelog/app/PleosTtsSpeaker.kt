@@ -15,6 +15,7 @@ class PleosTtsSpeaker(context: Context) : Speaker {
 
     @Volatile
     private var ready = false
+    val isReady: Boolean get() = ready
 
     init {
         tts.initialize(object : OnInitializeListener {

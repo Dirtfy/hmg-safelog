@@ -14,9 +14,13 @@ import android.text.StaticLayout
 import android.text.TextPaint
 import android.view.MotionEvent
 import android.view.View
+import com.hmg.safelog.core.DayReview
 import com.hmg.safelog.core.EventRecord
 import com.hmg.safelog.core.Gear
 import com.hmg.safelog.core.PedalGuardConfig
+import com.hmg.safelog.core.TelltaleAdvice
+import com.hmg.safelog.core.TelltaleGuide
+import com.hmg.safelog.core.Urgency
 import com.hmg.safelog.core.TripSummary
 import com.hmg.safelog.core.WarningTelltale
 import kotlin.math.max
@@ -40,6 +44,17 @@ class DemoView(context: Context) : View(context) {
     @Volatile private var record: EventRecord? = null
     @Volatile private var trip: TripSummary? = null
     private var shareOn = false
+    /** Bottom-right source label. */
+    var footer = "시뮬레이션 신호(CSV) 재생 · 실제 차량 아님"
+    // live mode (Pleos): telltale advice card, navigation status, driver reply, day review, sent card
+    @Volatile private var advice: TelltaleAdvice? = null
+    @Volatile private var naviStatus = ""
+    @Volatile private var driverSaid = ""
+    @Volatile private var day: DayReview? = null
+    @Volatile private var sentCard: String? = null
+    /** Parked-screen buttons (live mode): id -> rect in 1920x1080 units. */
+    var onButton: (String) -> Unit = {}
+    @Volatile var parkedButtons = false
 
     private val pedalMessage = PedalGuardConfig().message
 
@@ -49,6 +64,11 @@ class DemoView(context: Context) : View(context) {
     fun setMode(m: Mode) { modeSince = clock(); mode = m; postInvalidate() }
     fun setRecord(r: EventRecord) { record = r }
     fun setTrip(t: TripSummary) { trip = t }
+    fun setAdvice(a: TelltaleAdvice?) { advice = a; postInvalidate() }
+    fun setNaviStatus(s: String) { naviStatus = s; postInvalidate() }
+    fun setDriverSaid(s: String) { driverSaid = s; postInvalidate() }
+    fun setDay(d: DayReview) { day = d; sentCard = null; postInvalidate() }
+    fun setSent(card: String) { sentCard = card; postInvalidate() }
 
     fun onSignals(g: Gear, kph: Double, b: Boolean, tt: List<WarningTelltale>) {
         gear = g; speed = kph; brake = b; telltales = tt
@@ -67,9 +87,16 @@ class DemoView(context: Context) : View(context) {
     }
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
-        if (e.action == MotionEvent.ACTION_DOWN && mode == Mode.REVIEW) {
+        if (e.action == MotionEvent.ACTION_DOWN) {
             val u = width / 1920f
-            if (e.x in 1100 * u..1860 * u && e.y in 700 * u..900 * u) { shareOn = !shareOn; invalidate() }
+            val x = e.x / u; val y = e.y / u
+            when {
+                mode == Mode.REVIEW && day != null && x in 1240f..1860f && y in 700f..880f -> onButton("send")
+                mode == Mode.REVIEW && day == null && x in 1100f..1860f && y in 700f..900f -> { shareOn = !shareOn; invalidate() }
+                mode == Mode.DRIVING && parkedButtons && y in 640f..740f && x in 60f..900f -> onButton("record")
+                mode == Mode.DRIVING && parkedButtons && y in 640f..740f && x in 960f..1860f -> onButton("review")
+                mode != Mode.DRIVING && x > 1500f && y < 160f -> onButton("close")
+            }
         }
         return true
     }
@@ -108,9 +135,9 @@ class DemoView(context: Context) : View(context) {
         when (mode) {
             Mode.DRIVING -> drawDriving(c)
             Mode.RECORD -> drawRecord(c)
-            Mode.REVIEW -> drawReview(c)
+            Mode.REVIEW -> if (day != null) drawDay(c) else drawReview(c)
         }
-        text(c, "시뮬레이션 신호(CSV) 재생 · 실제 차량 아님", 1860f, 1056f, 30f, 0xFF78909C.toInt(), Paint.Align.RIGHT)
+        text(c, footer, 1860f, 1056f, 30f, 0xFF78909C.toInt(), Paint.Align.RIGHT)
         c.restore()
         // keep animating (banner flash, record reveal)
         postInvalidateOnAnimation()
@@ -122,7 +149,7 @@ class DemoView(context: Context) : View(context) {
         text(c, "SafeLog", 60f, 90f, 56f, Color.WHITE, bold = true)
         val tt = telltales
         if (tt.isNotEmpty()) {
-            text(c, "경고등 켜짐: " + tt.joinToString(" ") { it.name }, 1860f, 90f, 40f, 0xFFFFB74D.toInt(), Paint.Align.RIGHT)
+            text(c, "경고등 켜짐: " + tt.joinToString(", ") { TelltaleGuide.advice(it).title }, 1860f, 90f, 40f, 0xFFFFB74D.toInt(), Paint.Align.RIGHT)
         }
 
         // flashing pedal banner (full width)
@@ -183,6 +210,45 @@ class DemoView(context: Context) : View(context) {
             text(c, "대기 중", 110f, 940f, 64f, 0xFF607D8B.toInt())
         } else {
             text(c, u, 110f, 950f, 84f, Color.WHITE, bold = true, maxW = 1700f)
+        }
+        if (driverSaid.isNotEmpty()) {
+            text(c, "운전자: $driverSaid", 1810f, 835f, 40f, 0xFFFFD54F.toInt(), Paint.Align.RIGHT, bold = true)
+        }
+        if (naviStatus.isNotEmpty()) {
+            text(c, "내비게이션: $naviStatus", 60f, 160f, 40f, 0xFF81C784.toInt(), maxW = 1300f)
+        }
+        val a = advice
+        if (a != null && !bannerOn) drawAdvice(c, a)
+        if (parkedButtons && a == null && !bannerOn) {
+            box(c, RectF(60f, 640f, 900f, 740f), 50f, 0xFF263544.toInt(), 0xFF4FC3F7.toInt(), 4f)
+            text(c, "기록 보기", 480f, 712f, 56f, Color.WHITE, Paint.Align.CENTER, bold = true)
+            box(c, RectF(960f, 640f, 1860f, 740f), 50f, 0xFF263544.toInt(), 0xFF66BB6A.toInt(), 4f)
+            text(c, "오늘 운전 돌아보기", 1410f, 712f, 56f, Color.WHITE, Paint.Align.CENTER, bold = true)
+        }
+    }
+
+    /** Scene A: plain-language telltale card over the gear/speed area (voice first; no touch needed). */
+    private fun drawAdvice(c: Canvas, a: TelltaleAdvice) {
+        val r = RectF(60f, 220f, 1860f, 740f)
+        val col = when (a.urgency) {
+            Urgency.STOP_NOW -> 0xFFE53935.toInt()
+            Urgency.TODAY -> 0xFFFFA726.toInt()
+            Urgency.THIS_WEEK -> 0xFFFFD54F.toInt()
+        }
+        box(c, r, 40f, 0xFF1B2733.toInt(), col, 8f)
+        text(c, "경고등 · ${a.title}", 110f, 320f, 72f, col, bold = true, maxW = 1700f)
+        val urg = when (a.urgency) {
+            Urgency.STOP_NOW -> "지금 차를 세우세요"
+            Urgency.TODAY -> "오늘 안에 조치"
+            Urgency.THIS_WEEK -> "이번 주 안에 점검"
+        }
+        text(c, urg, 1810f, 320f, 56f, Color.WHITE, Paint.Align.RIGHT, bold = true)
+        tp.color = Color.WHITE; tp.textSize = 58f; tp.typeface = Typeface.DEFAULT
+        val layout = StaticLayout.Builder.obtain(a.speech, 0, a.speech.length, tp, 1700)
+            .setAlignment(Layout.Alignment.ALIGN_NORMAL).setLineSpacing(0f, 1.2f).build()
+        c.save(); c.translate(110f, 370f); layout.draw(c); c.restore()
+        if (a.offerShop) {
+            text(c, "\"응\" 하고 말하면 가까운 정비소를 경유지로 넣어요", 110f, 700f, 48f, 0xFF4FC3F7.toInt(), maxW = 1700f)
         }
     }
 
@@ -284,6 +350,32 @@ class DemoView(context: Context) : View(context) {
         val note = RectF(60f, 910f, 1860f, 1030f)
         box(c, note, 50f, 0xFF1B2733.toInt(), 0xFF66BB6A.toInt(), 5f)
         text(c, "위치·경로는 보내지 않아요", 960f, 990f, 66f, Color.WHITE, Paint.Align.CENTER, bold = true, maxW = 1700f)
+    }
+
+    // ------------------------------------------------------------ day review
+    private fun drawDay(c: Canvas) {
+        val d = day ?: return
+        text(c, "오늘 운전 돌아보기", 60f, 110f, 80f, Color.WHITE, bold = true)
+        text(c, "나만 보는 화면", 1860f, 105f, 48f, 0xFF66BB6A.toInt(), Paint.Align.RIGHT, bold = true)
+        val card = RectF(60f, 160f, 1860f, 660f)
+        box(c, card, 36f, 0xFF1B2733.toInt(), 0xFF4FC3F7.toInt(), 4f)
+        for ((i, ln) in d.lines().withIndex()) {
+            text(c, ln, 120f, 270f + i * 110f, 70f, Color.WHITE, bold = i == 0, maxW = 1680f)
+        }
+        val sent = sentCard
+        if (sent == null) {
+            text(c, "가족에게 보내기", 100f, 760f, 66f, Color.WHITE, bold = true)
+            text(c, "기본 꺼짐 · 내가 누르거나 말할 때만", 100f, 840f, 44f, 0xFFB0BEC5.toInt())
+            box(c, RectF(1240f, 700f, 1860f, 880f), 60f, 0xFF263544.toInt(), 0xFF66BB6A.toInt(), 5f)
+            text(c, "보내기", 1550f, 820f, 76f, Color.WHITE, Paint.Align.CENTER, bold = true)
+        } else {
+            box(c, RectF(60f, 690f, 1860f, 900f), 40f, 0xFF1E3B2A.toInt(), 0xFF66BB6A.toInt(), 5f)
+            text(c, "보냈어요 · 요약 카드 (횟수만)", 110f, 770f, 60f, 0xFF81C784.toInt(), bold = true)
+            text(c, sent.lines().drop(1).take(3).joinToString("  ·  "), 110f, 850f, 42f, Color.WHITE, maxW = 1700f)
+        }
+        val note = RectF(60f, 920f, 1860f, 1020f)
+        box(c, note, 50f, 0xFF1B2733.toInt(), 0xFF66BB6A.toInt(), 5f)
+        text(c, "위치·경로는 보내지 않아요", 960f, 992f, 62f, Color.WHITE, Paint.Align.CENTER, bold = true, maxW = 1700f)
     }
 
     private companion object {
