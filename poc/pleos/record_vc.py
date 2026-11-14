@@ -304,8 +304,6 @@ def main():
                   "--disable-infobars", "--noerrdialogs", "--disable-session-crashed-bubble", "--hide-scrollbars"])
         ctx = br.new_context(no_viewport=True)
         ctx.add_init_script(CURSOR_JS)
-        # 2D 도로 애니메이션을 약 15fps로(녹화는 10fps). 물리 계산은 실제 경과 시간을 써서 결과는 같고, CPU를 에뮬레이터에 양보한다
-        ctx.add_init_script("window.requestAnimationFrame = cb => setTimeout(() => cb(performance.now()), 66);")
         # 3D 고속도로(three.js WebGL)는 GPU 없는 러너에서 CPU를 다 써 버려(클릭 하나에 40초) 막고 2D 도로(Forest 테마)로 띄운다
         ctx.add_init_script("try{localStorage.setItem('virtual-console-theme','forest')}catch(e){}")
         ctx.route("**/vendor/**", lambda r: r.abort())
