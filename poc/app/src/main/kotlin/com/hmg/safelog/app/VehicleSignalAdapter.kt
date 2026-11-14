@@ -5,6 +5,8 @@ import android.car.VehiclePropertyIds
 import android.car.hardware.CarPropertyValue
 import android.car.hardware.property.CarPropertyManager
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import ai.pleos.playground.vehicle.Vehicle
 import ai.pleos.playground.vehicle.api.model.area.SeatArea
@@ -15,7 +17,6 @@ import ai.pleos.playground.vehicle.constant.telltale.TelltaleState
 import ai.pleos.playground.vehicle.listener.BrakePedalStatusListener
 import ai.pleos.playground.vehicle.listener.GearSelectionListener
 import ai.pleos.playground.vehicle.listener.SeatAirbagDeployedListener
-import ai.pleos.playground.vehicle.listener.TelltaleInfoListener
 import com.hmg.safelog.core.Gear
 import com.hmg.safelog.core.SignalListener
 import com.hmg.safelog.core.SignalSource
@@ -38,7 +39,7 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
         v.initialize()
         vehicle = v
 
-        v.getBrake().registerBrakePedalStatus(object : BrakePedalStatusListener {
+        guarded("brake") { v.getBrake().registerBrakePedalStatus(object : BrakePedalStatusListener {
             override fun onBrakePedalStatusUpdated(pressed: Boolean?) {
                 listener.onBrake(now(), pressed == true)
             }
@@ -46,9 +47,9 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
             override fun onFailed(e: Exception) {
                 Log.w(TAG, "brake listener failed", e)
             }
-        })
+        }) }
 
-        v.getGear().registerGearSelection(object : GearSelectionListener {
+        guarded("gear") { v.getGear().registerGearSelection(object : GearSelectionListener {
             override fun onSelected(gear: VehicleGear?) {
                 listener.onGear(now(), mapGear(gear))
             }
@@ -56,10 +57,10 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
             override fun onFailed(e: Exception) {
                 Log.w(TAG, "gear listener failed", e)
             }
-        })
+        }) }
 
         // Row 1 left: driver seat airbag
-        v.getSafety().registerSeatAirbagDeployed(
+        guarded("airbag") { v.getSafety().registerSeatAirbagDeployed(
             SeatArea(SeatValue.ROW_1_LEFT),
             object : SeatAirbagDeployedListener {
                 override fun onSeatAirbagDeployUpdated(deployed: Boolean?) {
@@ -70,19 +71,43 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
                     Log.w(TAG, "airbag listener failed", e)
                 }
             },
-        )
+        ) }
 
-        v.getSafety().registerTelltales(object : TelltaleInfoListener {
-            override fun onTelltaleInfoUpdated(telltales: Telltales?) {
-                listener.onTelltales(now(), mapTelltales(telltales ?: return))
+        // registerTelltales needs pleos.car.permission.PRIVATE_CAR_SAFETY (not for third-party apps; found on the
+        // Pleos Connect Emulator 2.1.0). getTelltalesInfo only needs CAR_SAFETY, so poll it once a second.
+        pollTelltales(v, listener)
+
+        guarded("speed") { startSpeed(listener) }
+    }
+
+    private val handler = Handler(Looper.getMainLooper())
+    private var telltalePoll: Runnable? = null
+
+    private fun pollTelltales(v: Vehicle, listener: SignalListener) {
+        val r = object : Runnable {
+            override fun run() {
+                guarded("telltales") {
+                    v.getSafety().getTelltalesInfo({ t ->
+                        val tt: Telltales? = t
+                        if (tt != null) listener.onTelltales(now(), mapTelltales(tt))
+                    }, { e ->
+                        Log.w(TAG, "getTelltalesInfo failed: $e")
+                    })
+                }
+                handler.postDelayed(this, TELLTALE_POLL_MS)
             }
+        }
+        telltalePoll = r
+        handler.post(r)
+    }
 
-            override fun onFailed(e: Exception) {
-                Log.w(TAG, "telltale listener failed", e)
-            }
-        })
-
-        startSpeed(listener)
+    /** One missing permission must not take the whole app down; log it and keep the other signals. */
+    private inline fun guarded(what: String, block: () -> Unit) {
+        try {
+            block()
+        } catch (e: SecurityException) {
+            Log.w(TAG, "PERMISSION_DENIED $what: ${e.message}")
+        }
     }
 
     private fun startSpeed(listener: SignalListener) {
@@ -105,6 +130,7 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
     }
 
     override fun stop() {
+        telltalePoll?.let { handler.removeCallbacks(it) }
         speedCallback?.let { propertyManager?.unregisterCallback(it) }
         car?.disconnect()
         vehicle?.release()
@@ -130,5 +156,6 @@ class VehicleSignalAdapter(private val context: Context) : SignalSource {
 
     private companion object {
         const val TAG = "SafeLog"
+        const val TELLTALE_POLL_MS = 1_000L
     }
 }

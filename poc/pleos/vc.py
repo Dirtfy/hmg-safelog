@@ -76,9 +76,44 @@ def find_telltale(name, value_label):
     return None, None
 
 
+def heartbeat():
+    """Virtual Console 웹 페이지와 같은 브라우저 세션 유지 신호(1초마다). 이게 없으면 DDS 브리지가 꺼진 채 503."""
+    import uuid
+    cid = str(uuid.uuid4())
+    while True:
+        try:
+            urllib.request.urlopen(urllib.request.Request(BASE + "/browser/session?client=" + cid, data=b"", method="POST"), timeout=5).read()
+        except Exception as e:
+            with open(LOG, "a") as f:
+                f.write(f"{time.time():.3f} heartbeat error {e}\n")
+        time.sleep(1)
+
+
+def wait_ready(timeout=180):
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        code, body = call("GET", "/vehicle/state")
+        try:
+            st = json.loads(body)
+            g = st["gear"].get("bridge_ready")
+            dds = st["controls"].get("dds_ready", {}).get("all")
+            if g and dds:
+                print("ready after", round(time.time() - t0, 1), "s")
+                return True
+        except Exception:
+            pass
+        time.sleep(2)
+    print("NOT ready after", timeout, "s")
+    return False
+
+
 def main():
     a = sys.argv[1:]
-    if a[0] == "gear":
+    if a[0] == "heartbeat":
+        heartbeat()
+    elif a[0] == "wait_ready":
+        wait_ready()
+    elif a[0] == "gear":
         print(call("PUT", "/vehicle/gear", {"gear": a[1]}))
     elif a[0] == "controls":
         print(controls(a[1], a[2], a[3]))

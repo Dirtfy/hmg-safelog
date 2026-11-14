@@ -22,6 +22,10 @@ PY
 }
 
 adb forward tcp:8088 tcp:8088
+# Virtual Console은 브라우저 세션(1초 heartbeat)이 있어야 차량 쪽(DDS) 브리지를 켠다
+python3 poc/pleos/vc.py heartbeat &
+HB=$!
+$VC wait_ready | tee "$O/vc_ready.txt"
 $VC catalog > "$O/catalog.json"
 $VC state > "$O/state0.json"
 timeout 120 adb install -r -t -g "$(ls poc/app/build/outputs/apk/debug/*.apk | head -1)" > "$O/install.txt" 2>&1
@@ -88,6 +92,6 @@ rec_stop C
 
 $VC state > "$O/state_end.json"
 sleep 2
-kill %1 2>/dev/null
+kill %1 2>/dev/null; kill $HB 2>/dev/null
 grep -E " SafeLog|NaviHelper|Navi|TextToSpeech|pleos" "$O/logcat.txt" | grep -viE "dexopt" > "$O/logcat_app.txt"
 ls -la "$O"
