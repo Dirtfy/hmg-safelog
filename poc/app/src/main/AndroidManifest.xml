@@ -45,6 +45,7 @@
         <activity
             android:name=".LiveActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|density"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
 

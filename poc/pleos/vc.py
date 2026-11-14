@@ -131,7 +131,7 @@ def main():
         n = max(1, int(sec / 0.2))
         for i in range(1, n + 1):
             t0 = time.time()
-            controls(round(v0 + (v1 - v0) * i / n, 1), acc, brk)
+            controls(int(round(v0 + (v1 - v0) * i / n)), acc, brk)  # Virtual Console은 정수 km/h만 받음(소수는 400)
             time.sleep(max(0, 0.2 - (time.time() - t0)))
 
 

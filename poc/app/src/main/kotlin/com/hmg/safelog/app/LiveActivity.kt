@@ -111,9 +111,15 @@ class LiveActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         view = DemoView(this)
-        view.footer = intent.getStringExtra("footer") ?: "Pleos Connect Emulator · 차량 신호: Virtual Console / VHAL"
+        view.footer = intent.getStringExtra("footer") ?: "Pleos Connect Emulator · 차량 신호: Virtual Console → Pleos Vehicle SDK"
         view.onButton = { onButton(it) }
-        setContentView(view)
+        // Pleos draws its vehicle status strip over the top-left corner; keep our content below it
+        val top = intent.getIntExtra("top_inset", 0)
+        setContentView(android.widget.FrameLayout(this).apply {
+            setBackgroundColor(0xFF0E1218.toInt())
+            setPadding(0, top, 0, 0)
+            addView(view)
+        })
         if (intent.getBooleanExtra("fullscreen", false)) hideSystemBars()
         // logged so a test script can tap the on-screen buttons (layout unit 1920x1080, fitted + centered)
         view.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
@@ -167,6 +173,11 @@ class LiveActivity : Activity() {
         val f = IntentFilter().apply { addAction(ACTION_VOICE); addAction(ACTION_UI); addAction(ACTION_TELLTALE) }
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver, f, Context.RECEIVER_EXPORTED)
         else registerReceiver(receiver, f)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        log("BROUGHT_TO_FRONT")
     }
 
     // ------------------------------------------------------------------ signals

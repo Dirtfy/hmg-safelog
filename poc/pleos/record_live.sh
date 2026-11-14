@@ -54,15 +54,19 @@ sleep 10
 voice "응, 안내해 줘"
 sleep 8
 timeout 30 adb exec-out screencap -p > "$O/sA_end.png"
+# 경유지를 넣으면 Pleos 내비가 앞으로 나온다. 세이프로그를 다시 앞으로(같은 인스턴스, singleTask)
+ts "FRONT"; a am start -n $PKG/com.hmg.safelog.app.LiveActivity > /dev/null
+sleep 4
 rec_stop A
 # 녹화 밖: 병원까지 계속 주행(거리·시간이 돌아보기 요약에 들어감) 후 주차
 $VC ramp 40 50 3 30 0
-sleep 120
+for i in 1 2 3 4; do sleep 30; a am start -n $PKG/com.hmg.safelog.app.LiveActivity > /dev/null; done
 $VC ramp 50 0 6 0 60
 $VC controls 0 0 100; sleep 1; $VC gear Park; sleep 4
 grep "VIEW_BOUNDS" "$O/logcat.txt" | sed 's/.*VIEW_BOUNDS //' | awk '$3>0 && $4>0' | tail -1 > "$O/view_bounds.txt"; cat "$O/view_bounds.txt"
 
 # ---------------- 장면 B: 낮, 마트 주차장 후진 · 페달 오조작 의심
+a am start -n $PKG/com.hmg.safelog.app.LiveActivity > /dev/null; sleep 3
 rec_start B
 sleep 3
 ts "GEAR R"; $VC gear Reverse
@@ -84,6 +88,7 @@ sleep 2
 rec_stop B
 
 # ---------------- 장면 C: 저녁, 집 앞 · 오늘 운전 돌아보기 → "보내 줘"
+a am start -n $PKG/com.hmg.safelog.app.LiveActivity > /dev/null; sleep 2
 rec_start C
 sleep 3
 tap 1410 690  # 오늘 운전 돌아보기
