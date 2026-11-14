@@ -40,7 +40,11 @@ class SafeLogService : Service() {
             PleosTtsSpeaker(this).also { speaker = it }
         } catch (e: SecurityException) {
             Log.w("SafeLog", "Pleos TTS unavailable: $e")
-            object : Speaker { override fun speak(text: String, languageTag: String) = Log.i("SafeLog", "SPEAK $text") }
+            object : Speaker {
+                override fun speak(text: String, languageTag: String) {
+                    Log.i("SafeLog", "SPEAK $text")
+                }
+            }
         }
         val clock = object : Clock {
             override fun nowMs() = System.currentTimeMillis()
