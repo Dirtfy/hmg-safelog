@@ -166,6 +166,7 @@ class LiveActivity : Activity() {
             },
         )
 
+        watchUxRestrictions()
         startNavi(intent.getBooleanExtra("route", false))
         adapter = VehicleSignalAdapter(this).also { it.start(listener) }
         log("LIVE_START")
@@ -354,6 +355,27 @@ class LiveActivity : Activity() {
         speaker.speak("정비소를 경유지로 추가했어요.")
     }
 
+    // ------------------------------------------------------- driving restriction
+    private var uxCar: android.car.Car? = null
+
+    /** Pleos driving restriction (CarUxRestrictions): log it so the demo shows what the platform allows. */
+    private fun watchUxRestrictions() {
+        try {
+            val car = android.car.Car.createCar(this)
+            uxCar = car
+            val pm = car.getCarManager(android.car.Car.PACKAGE_SERVICE) as android.car.content.pm.CarPackageManager
+            log("DO_DECLARED_HONORED ${pm.isActivityDistractionOptimized(packageName, LiveActivity::class.java.name)}")
+            val ux = car.getCarManager(android.car.Car.CAR_UX_RESTRICTION_SERVICE) as android.car.drivingstate.CarUxRestrictionsManager
+            val show = { r: android.car.drivingstate.CarUxRestrictions ->
+                log("UXR requiresDO=${r.isRequiresDistractionOptimization} active=0x${Integer.toHexString(r.activeRestrictions)}")
+            }
+            ux.currentCarUxRestrictions?.let(show)
+            ux.registerListener { r -> show(r) }
+        } catch (e: Throwable) {
+            Log.w(TAG, "ux restrictions unavailable: $e")
+        }
+    }
+
     // -------------------------------------------------------------------- misc
     private fun hideSystemBars() {
         if (Build.VERSION.SDK_INT >= 30) {
@@ -373,6 +395,7 @@ class LiveActivity : Activity() {
         adapter?.stop()
         try { navi?.removeListener(naviListener); navi?.release() } catch (_: Throwable) {}
         pleosTts?.release()
+        try { uxCar?.disconnect() } catch (_: Throwable) {}
         try { androidTts?.shutdown() } catch (_: Throwable) {}
         super.onDestroy()
     }

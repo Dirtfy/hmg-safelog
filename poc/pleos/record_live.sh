@@ -29,7 +29,9 @@ $VC wait_ready | tee "$O/vc_ready.txt"
 $VC catalog > "$O/catalog.json"
 $VC state > "$O/state0.json"
 timeout 120 adb install -r -t -g "$(ls poc/app/build/outputs/apk/debug/*.apk | head -1)" > "$O/install.txt" 2>&1
-a dumpsys package $PKG | grep -E "permission|granted" > "$O/app_perms.txt"
+a dumpsys package $PKG | grep -E "permission|granted|installer" > "$O/app_perms.txt"
+a dumpsys car_service --services CarPackageManagerService > "$O/carpm.txt" 2>&1
+a dumpsys car_service --services CarUxRestrictionsManagerService > "$O/uxr.txt" 2>&1
 a settings put secure immersive_mode_confirmations confirmed
 # 시작 상태: P, 브레이크 밟음
 $VC gear Park; $VC controls 0 0 100
