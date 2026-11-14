@@ -311,6 +311,21 @@ class Console:
         return b["x"] + b["width"] / 2, b["y"] + b["height"] / 2
 
 
+def scene_c(vc, page):
+    """장면 C: 저녁, 집에 도착 → P → 오늘 요약이 가족에게 자동으로 감 → 돌아보기."""
+    rec_start("C")
+    vc.drive_to(30, rate=3.0, hold=4, tag="C near home")
+    vc.stop(rate=4.0, tag="C home")
+    time.sleep(1)
+    vc.gear("Park")
+    time.sleep(7)
+    button("review")
+    time.sleep(11)
+    page.screenshot(path=os.path.join(O, "vcC_end.png"))
+    sh(f"adb exec-out screencap -p > {O}/sC_sent.png", 30)
+    rec_stop("C")
+
+
 def main():
     with sync_playwright() as pw:
         br = pw.chromium.launch(
@@ -341,6 +356,32 @@ def main():
         t_ = time.time(); page.evaluate("1"); ts(f"VC_RTT {time.time() - t_:.3f}s")
         vc.gear("Park")
         ts("READY")
+        if os.environ.get("SCENES") == "C":
+            # 장면 C만 따로 찍는 짧은 실행: 같은 하루(아침 주행 + 경고등, 낮 후진 페달 경고)를 녹화 없이 빠르게 재현한 뒤 C를 녹화.
+            # (긴 실행 후반에는 에뮬레이터가 느려져 C가 실패했음)
+            ts("PRELUDE start (not recorded)")
+            vc.gear("Drive")
+            vc.drive_to(35, rate=3.0, hold=8, tag="prelude morning")
+            sh("python3 poc/pleos/vc.py telltale TPMS On")
+            ts("APP_TELLTALE TPMS On")
+            adb(f"am broadcast -a {PKG}.TELLTALE --es type TPMS --ez on true -p {PKG}")
+            vc.drive_to(35, rate=3.0, hold=6, tag="prelude morning2")
+            vc.stop(rate=4.0, tag="prelude hospital")
+            vc.gear("Park")
+            time.sleep(3)
+            vc.gear("Reverse")
+            time.sleep(2)
+            vc.hold("accel", until=lambda v: v >= 15, max_s=4, tag="prelude wrong pedal")
+            vc.hold("brake", until=lambda v: v <= 0.2, max_s=4, tag="prelude brake")
+            vc.gear("Park")
+            time.sleep(3)
+            vc.gear("Drive")
+            vc.drive_to(30, rate=3.0, hold=6, tag="C road")
+            front(); time.sleep(1)
+            ts("PRELUDE end")
+            scene_c(vc, page)
+            ctx.close(); br.close()
+            return
 
         # ---------------- 장면 A: 아침 병원 가는 길 · 주행 중 경고등(TPMS) → 쉬운 말 해설 → "응" → 정비소 경유지
         front(); time.sleep(3)
@@ -391,21 +432,10 @@ def main():
         time.sleep(2)
         rec_stop("B")
 
-        # ---------------- 장면 C: 저녁, 집에 도착 → 주차하면 오늘 요약이 가족에게 자동으로 감 → 돌아보기
         vc.gear("Drive")
         vc.drive_to(30, rate=3.0, hold=12, tag="C road")
         front(); time.sleep(1)
-        rec_start("C")
-        vc.drive_to(30, rate=3.0, hold=4, tag="C near home")
-        vc.stop(rate=4.0, tag="C home")
-        time.sleep(1)
-        vc.gear("Park")
-        time.sleep(7)
-        button("review")
-        time.sleep(11)
-        page.screenshot(path=os.path.join(O, "vcC_end.png"))
-        sh(f"adb exec-out screencap -p > {O}/sC_sent.png", 30)
-        rec_stop("C")
+        scene_c(vc, page)
         ctx.close(); br.close()
 
 
