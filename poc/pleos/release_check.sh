@@ -12,6 +12,8 @@ APKSIGNER=$(ls $ANDROID_HOME/build-tools/*/apksigner | sort -V | tail -1)
 $APKSIGNER verify --verbose --print-certs "$APK" > "$O/apksigner.txt" 2>&1
 AAPT=$(ls $ANDROID_HOME/build-tools/*/aapt | sort -V | tail -1)
 $AAPT dump badging "$APK" | head -3 > "$O/badging.txt"; $AAPT dump badging "$APK" | grep -c "application-debuggable" >> "$O/badging.txt"
+# 부팅 직후 시스템 앱이 몰려 CPU가 꽉 찬다(소프트웨어 렌더링). 2분 기다린 뒤 시작
+sleep 120
 a wm size > "$O/wm.txt"; a wm density >> "$O/wm.txt"
 a getprop > "$O/getprop.txt"
 adb forward tcp:8088 tcp:8088
