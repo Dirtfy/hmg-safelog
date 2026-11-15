@@ -11,8 +11,26 @@ android {
         applicationId = "com.hmg.safelog.poc"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1-poc"
+        versionCode = 2
+        versionName = "1.0.0"
+    }
+
+    // Release signing: the keystore and its passwords come from GitHub Actions secrets (never committed).
+    val ks = System.getenv("SAFELOG_KEYSTORE")
+    signingConfigs {
+        if (ks != null) create("release") {
+            storeFile = file(ks)
+            storePassword = System.getenv("SAFELOG_KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("SAFELOG_KEY_ALIAS") ?: "safelog"
+            keyPassword = System.getenv("SAFELOG_KEYSTORE_PASSWORD")
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            // No minification, so the release build runs the same code as the tested debug build.
+            isMinifyEnabled = false
+            if (ks != null) signingConfig = signingConfigs.getByName("release")
+        }
     }
 
     compileOptions {

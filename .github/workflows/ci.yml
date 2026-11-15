@@ -55,3 +55,20 @@ jobs:
         with:
           name: app-debug-apk
           path: poc/app/build/outputs/apk/debug/*.apk
+      - name: Assemble signed release APK
+        env:
+          KS_B64: ${{ secrets.SAFELOG_KEYSTORE_B64 }}
+          SAFELOG_KEYSTORE_PASSWORD: ${{ secrets.SAFELOG_KEYSTORE_PASSWORD }}
+        run: |
+          echo "$KS_B64" | base64 -d > $RUNNER_TEMP/safelog.jks
+          SAFELOG_KEYSTORE=$RUNNER_TEMP/safelog.jks gradle -p poc :app:assembleRelease --no-daemon --stacktrace
+          rm -f $RUNNER_TEMP/safelog.jks
+          APKSIGNER=$(ls $ANDROID_HOME/build-tools/*/apksigner | sort -V | tail -1)
+          $APKSIGNER verify --verbose --print-certs poc/app/build/outputs/apk/release/app-release.apk | tee apksigner.txt
+      - uses: actions/upload-artifact@v4
+        if: hashFiles('poc/app/build/outputs/apk/release/app-release.apk') != ''
+        with:
+          name: app-release-apk
+          path: |
+            poc/app/build/outputs/apk/release/app-release.apk
+            apksigner.txt
