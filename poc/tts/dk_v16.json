@@ -1,0 +1,23 @@
+[
+ {
+  "id": "nfd30bb3c",
+  "lang": "ko",
+  "voice": "narrator",
+  "text": "주행 중에는 영어 음성으로 안내합니다.",
+  "speed": 1.15
+ },
+ {
+  "id": "nc5290d2b",
+  "lang": "ko",
+  "voice": "narrator",
+  "text": "위치는 주행 경로를 지피에스 좌표로 재생해 입력했습니다.",
+  "speed": 1.15
+ },
+ {
+  "id": "n7d919d61",
+  "lang": "ko",
+  "voice": "narrator",
+  "text": "앱이 말한 문장과 시각은 앱 로그 그대로, 음성은 멜로 티티에스로 합성했습니다.",
+  "speed": 1.15
+ }
+]
