@@ -1,0 +1,233 @@
+[
+{
+"id": "n2123cbff",
+"lang": "ko",
+"voice": "narrator",
+"text": "액셀 페달로 천천히 출발합니다.",
+"speed": 1.15
+},
+{
+"id": "n96068275",
+"lang": "ko",
+"voice": "narrator",
+"text": "브레이크로 멈춥니다.",
+"speed": 1.15
+},
+{
+"id": "n5779b196",
+"lang": "ko",
+"voice": "narrator",
+"text": "피를 누르고 기록 보기를 열었습니다. 경고 전후의 속도와 브레이크 기록입니다.",
+"speed": 1.15
+},
+{
+"id": "n946ff702",
+"lang": "ko",
+"voice": "narrator",
+"text": "피를 누릅니다.",
+"speed": 1.15
+},
+{
+"id": "n3f915e88",
+"lang": "ko",
+"voice": "narrator",
+"text": "경고등 값은 앱에 권한이 없어, 같은 값을 직접 넣었습니다.",
+"speed": 1.15
+},
+{
+"id": "nc3ce35d7",
+"lang": "ko",
+"voice": "narrator",
+"text": "기어를 디로 바꿉니다.",
+"speed": 1.15
+},
+{
+"id": "n2a355d49",
+"lang": "ko",
+"voice": "narrator",
+"text": "모든 화면은 플레오스 에뮬레이터에서 실제로 실행한 것입니다. 오른쪽 콘솔을 스크립트가 눌러 신호를 넣었고, 앱 목소리는 앱이 실제로 낸 소리를 따로 녹음해 넣었습니다.",
+"speed": 1.15
+},
+{
+"id": "n4ac53361",
+"lang": "ko",
+"voice": "narrator",
+"text": "브레이크 대신 액셀을 꾹 누릅니다.",
+"speed": 1.15
+},
+{
+"id": "n4978bb03",
+"lang": "ko",
+"voice": "narrator",
+"text": "브레이크를 밟은 채 알을 누릅니다.",
+"speed": 1.15
+},
+{
+"id": "n12735e3b",
+"lang": "ko",
+"voice": "narrator",
+"text": "세이프로그. 만 65세 이상 운전자를 위한 페달 안심 기록과 경고등 음성 해설 앱입니다.",
+"speed": 1.15
+},
+{
+"id": "nec7ffef9",
+"lang": "ko",
+"voice": "narrator",
+"text": "세이프로그는 차량 신호를 읽기만 합니다. 가족은 처음 설정 때 한 번 등록하고 동의합니다.",
+"speed": 1.15
+},
+{
+"id": "n2ea83908",
+"lang": "ko",
+"voice": "narrator",
+"text": "앱은 차를 제어하지 않고, 알리고 기록만 합니다.",
+"speed": 1.15
+},
+{
+"id": "naac49c38",
+"lang": "ko",
+"voice": "narrator",
+"text": "앱이 쉬운 말로 설명하고, 정비소에 들를지 물었습니다.",
+"speed": 1.15
+},
+{
+"id": "nc1aaab03",
+"lang": "ko",
+"voice": "narrator",
+"text": "앱이 실제 신호를 보고 바로 경고했고, 브레이크로 멈춥니다.",
+"speed": 1.15
+},
+{
+"id": "n6618381b",
+"lang": "ko",
+"voice": "narrator",
+"text": "요약 카드가 가족에게 자동으로 갔습니다.",
+"speed": 1.15
+},
+{
+"id": "n1c3439b3",
+"lang": "ko",
+"voice": "narrator",
+"text": "운전자가 말로 답하자, 앱이 내비에 정비소를 경유지로 넣었습니다.",
+"speed": 1.15
+},
+{
+"id": "n255aeca8",
+"lang": "ko",
+"voice": "narrator",
+"text": "이 그래프는 가족에게 보내지 않습니다.",
+"speed": 1.15
+},
+{
+"id": "n34417837",
+"lang": "ko",
+"voice": "narrator",
+"text": "일흔한 살 김 씨는 직접 운전해 병원과 마트를 다닙니다. 자녀는 다른 도시에 삽니다.",
+"speed": 1.15
+},
+{
+"id": "n99dd21c0",
+"lang": "ko",
+"voice": "narrator",
+"text": "장면 에이. 아침, 병원 가는 길입니다. 오른쪽 콘솔을 눌러 차 대신 신호를 넣습니다.",
+"speed": 1.15
+},
+{
+"id": "n15a5bb64",
+"lang": "ko",
+"voice": "narrator",
+"text": "장면 비. 낮, 마트 주차장에서 후진합니다.",
+"speed": 1.15
+},
+{
+"id": "n93c58635",
+"lang": "ko",
+"voice": "narrator",
+"text": "장면 씨. 저녁, 집에 도착합니다. 이 장면은 같은 방법으로 따로 실행해 녹화했습니다.",
+"speed": 1.15
+},
+{
+"id": "n3ac8a274",
+"lang": "ko",
+"voice": "narrator",
+"text": "주행 중에는 플레오스가 앱 화면을 가려, 앱이 그린 화면을 왼쪽 아래에 둡니다.",
+"speed": 1.15
+},
+{
+"id": "n124ae873",
+"lang": "ko",
+"voice": "narrator",
+"text": "출발이 빨라 다른 페달 경고가 한 번 났습니다. 기준이 아직 임시라 생긴 오경보입니다.",
+"speed": 1.15
+},
+{
+"id": "nb84eb1cd",
+"lang": "ko",
+"voice": "narrator",
+"text": "카드에는 횟수만 있고 위치는 없습니다. 오늘 운전 돌아보기 화면입니다.",
+"speed": 1.15
+},
+{
+"id": "na245ee84",
+"lang": "ko",
+"voice": "narrator",
+"text": "콘솔에서 타이어 공기압 경고등을 켭니다.",
+"speed": 1.15
+},
+{
+"id": "n881ed732",
+"lang": "ko",
+"voice": "narrator",
+"text": "페달로 속도를 줄입니다.",
+"speed": 1.15
+},
+{
+"id": "e4128a88a1",
+"lang": "ko",
+"voice": "app",
+"text": "오른발이 브레이크 위에 있는지 확인하세요",
+"speed": 1.0
+},
+{
+"id": "09f7d86760",
+"lang": "ko",
+"voice": "app",
+"text": "타이어 바람이 조금 빠졌어요. 지금 위험하지는 않아요. 오늘 안에 넣어 주세요.",
+"speed": 1.0
+},
+{
+"id": "b44edbb463",
+"lang": "ko",
+"voice": "app",
+"text": "가까운 정비소로 같이 갈까요?",
+"speed": 1.0
+},
+{
+"id": "7cf6f580eb",
+"lang": "ko",
+"voice": "app",
+"text": "정비소를 경유지로 추가했어요.",
+"speed": 1.0
+},
+{
+"id": "d53967680d",
+"lang": "ko",
+"voice": "app",
+"text": "다른 페달, 브레이크를 밟으세요",
+"speed": 1.0
+},
+{
+"id": "19973d9688",
+"lang": "ko",
+"voice": "app",
+"text": "운전이 끝났어요. 오늘 요약을 가족에게 보냈어요.",
+"speed": 1.0
+},
+{
+"id": "9723f8df23",
+"lang": "ko",
+"voice": "app",
+"text": "오늘도 안전하게 운전하셨어요.",
+"speed": 1.0
+}
+]
