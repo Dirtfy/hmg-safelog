@@ -8,7 +8,7 @@
 |---|---|
 | `docs/plan/기획서_세이프로그.docx` | 제출용 기획서 — 공모전 공식 접수양식(form.docx) 그대로, 02 항목 1~7 기입 + 별지(참고한 자료). 개인정보·서명 칸은 비워 둠 |
 | `docs/plan/기획서_세이프로그.pdf` | 같은 내용의 PDF |
-| `docs/demo/세이프로그_시연영상.mp4` | 시연 영상(233초, 한국어 자막 + 한국어 내레이션 + 앱 음성 재현). 앱이 말한 문장과 시각은 앱 로그 그대로, 음성은 MeloTTS(MIT)로 합성 — `.github/workflows/tts.yml`, `poc/tts/`. 세 장면 모두 **Pleos Connect Emulator 2.1.0에서 실제로 실행한 화면**. 4분할: [1] Pleos 화면 녹화, [2] 신호를 넣는 **Pleos Virtual Console 조작 화면 녹화**(기어 버튼·ACCEL/BRAKE 패드를 스크립트가 누름), [3] 같은 순간 앱이 그린 화면, [4] 앱 로그. 장면 A·B는 한 번의 실행, 장면 C는 같은 방법의 별도 짧은 실행(`record_vc_c.sh`) |
+| `docs/demo/세이프로그_시연영상.mp4` | 시연 영상(228초, 한국어 자막 + 한국어 내레이션 + 앱 음성 재현). 앱이 말한 문장과 시각은 앱 로그 그대로, 음성은 MeloTTS(MIT)로 합성 — `.github/workflows/tts.yml`, `poc/tts/`. 세 장면 모두 **Pleos Connect Emulator 2.1.0에서 실제로 실행한 화면**. 4분할: [1] Pleos 화면 녹화, [2] 신호를 넣는 **Pleos Virtual Console 조작 화면 녹화**(기어 버튼·ACCEL/BRAKE 패드를 스크립트가 누름), [3] 같은 순간 앱이 그린 화면, [4] 앱 로그. 장면 A·B는 한 번의 실행, 장면 C는 같은 방법의 별도 짧은 실행(`record_vc_c.sh`) |
 | `docs/research/` | 근거 자료(조사 노트 md), Pleos SDK 공개 API 시그니처 추출본 |
 | `docs/poc/poc_verdict.md` | PoC 구현 가능성 판정표 (구현됨 / 대체 구현 / 불가) |
 | `poc/core` | 순수 Kotlin 로직: `PedalGuard`, `ParkingStartCheck`, `TripFeedback`, `AlertPolicy`(공유·동의 알림) + JUnit5 테스트 |
