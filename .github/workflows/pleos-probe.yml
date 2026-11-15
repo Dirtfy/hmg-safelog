@@ -7,6 +7,9 @@ on:
       script:
         description: 'script to run after boot (poc/pleos/*.sh)'
         default: 'poc/pleos/probe.sh'
+      audio:
+        description: 'record emulator audio output (pulseaudio null sink -> pleos-out/audio.wav)'
+        default: 'false'
 
 jobs:
   probe:
@@ -62,7 +65,18 @@ jobs:
           export ANDROID_AVD_HOME=$HOME/.android/avd
           # Pleos 이미지는 adb 인증을 요구: 에뮬레이터보다 먼저 adb 키를 만들어 두면 에뮬레이터가 공개키를 넘겨 준다
           $ANDROID_HOME/platform-tools/adb start-server; ls -la $HOME/.android/ > "$OUT/adbkey.txt"
-          nohup $ANDROID_HOME/emulator/emulator -avd pleos -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim -noaudio -camera-back none -camera-front none -verbose > "$OUT/emulator.log" 2>&1 &
+          AUD=-noaudio
+          if [ "${{ github.event.inputs.audio }}" = "true" ]; then
+            # 에뮬레이터 소리 출력을 가상 스피커(null sink)로 받아 녹음한다
+            sudo apt-get update -qq > /dev/null 2>&1; sudo apt-get install -y -qq pulseaudio pulseaudio-utils > "$OUT/apt_audio.txt" 2>&1
+            pulseaudio -D --exit-idle-time=-1 >> "$OUT/apt_audio.txt" 2>&1; sleep 2
+            pactl load-module module-null-sink sink_name=rec sink_properties=device.description=rec >> "$OUT/apt_audio.txt" 2>&1
+            pactl set-default-sink rec; pactl info > "$OUT/pactl_info.txt" 2>&1
+            date +%s.%N > "$OUT/audio_start.txt"
+            nohup parec -d rec.monitor --rate=44100 --channels=1 --format=s16le --file-format=wav "$OUT/audio.wav" > "$OUT/parec.log" 2>&1 &
+            AUD=""
+          fi
+          nohup $ANDROID_HOME/emulator/emulator -avd pleos -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim $AUD -camera-back none -camera-front none -verbose > "$OUT/emulator.log" 2>&1 &
           export PATH=$ANDROID_HOME/platform-tools:$PATH
           timeout 600 adb wait-for-device || { echo "no device" > "$OUT/boot.txt"; exit 0; }
           t=0; until [ "$(timeout 10 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] || [ $t -ge 1200 ]; do sleep 5; t=$((t+5)); done
@@ -74,6 +88,7 @@ jobs:
           export PATH=$ANDROID_HOME/platform-tools:$PATH
           timeout 30 adb logcat -d > "$OUT/logcat_final.txt" 2>/dev/null || true
           timeout 20 adb emu kill || true
+          pkill -INT parec || true; sleep 1
           df -h / > "$OUT/df_end.txt" || true
           tail -200 "$OUT/emulator.log" > "$OUT/emulator_tail.log" 2>/dev/null || true
           tar czf pleos-out.tgz pleos-out

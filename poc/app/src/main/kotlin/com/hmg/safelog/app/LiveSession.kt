@@ -178,7 +178,7 @@ object LiveSession {
         adapter = VehicleSignalAdapter(app).also { it.start(listener) }
         log("LIVE_START")
 
-        val f = IntentFilter().apply { addAction(ACTION_VOICE); addAction(ACTION_UI); addAction(ACTION_TELLTALE) }
+        val f = IntentFilter().apply { addAction(ACTION_VOICE); addAction(ACTION_UI); addAction(ACTION_TELLTALE); addAction(ACTION_SAY) }
         if (Build.VERSION.SDK_INT >= 33) app.registerReceiver(receiver, f, Context.RECEIVER_EXPORTED)
         else app.registerReceiver(receiver, f)
     }
@@ -246,6 +246,8 @@ object LiveSession {
                 ACTION_VOICE -> onVoice(i.getStringExtra("text") ?: "")
                 ACTION_UI -> onButton(i.getStringExtra("button") ?: "")
                 ACTION_TELLTALE -> injectTelltale(i.getStringExtra("type") ?: "", i.getBooleanExtra("on", true))
+                // 영상 소리용: 앱이 주행 중 말한 문장을 같은 TTS 경로로 다시 말하게 해 실제 출력음을 녹음한다
+                ACTION_SAY -> speaker.speak(i.getStringExtra("text") ?: "", "ko-KR")
             }
         }
     }
@@ -448,6 +450,7 @@ object LiveSession {
     const val ACTION_VOICE = "com.hmg.safelog.poc.VOICE"
     const val ACTION_UI = "com.hmg.safelog.poc.UI"
     const val ACTION_TELLTALE = "com.hmg.safelog.poc.TELLTALE"
+    const val ACTION_SAY = "com.hmg.safelog.poc.SAY"
     private const val HOSPITAL_LAT = 37.3520
     private const val HOSPITAL_LON = 127.1235
     private const val SHOP_LAT = 37.3596
