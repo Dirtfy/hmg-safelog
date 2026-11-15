@@ -1,0 +1,50 @@
+name: tts
+on:
+  workflow_dispatch:
+    inputs:
+      lines:
+        description: repo path of the lines JSON
+        default: poc/tts/lines.json
+jobs:
+  tts:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: apt deps
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libsndfile1 ffmpeg build-essential cmake mecab libmecab-dev
+      - name: cache hf
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-melo-v1
+      - name: install MeloTTS
+        run: |
+          python -m pip install -U pip wheel "setuptools<70"
+          pip install torch==2.2.2 torchaudio==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+          pip install "numpy<2"
+          git clone --depth 1 https://github.com/myshell-ai/MeloTTS.git /tmp/MeloTTS
+          cd /tmp/MeloTTS && git rev-parse HEAD > /tmp/melo_rev.txt
+          pip install -e .
+          python -m unidic download
+          python -c "import nltk; [nltk.download(x) for x in ['averaged_perceptron_tagger','averaged_perceptron_tagger_eng','cmudict']]"
+      - name: synthesize
+        run: |
+          mkdir -p out
+          python poc/tts/synth.py "${{ inputs.lines }}" out
+          {
+            echo "engine: MeloTTS (myshell-ai/MeloTTS), git rev $(cat /tmp/melo_rev.txt)"
+            echo "models: myshell-ai/MeloTTS-Korean (https://huggingface.co/myshell-ai/MeloTTS-Korean), myshell-ai/MeloTTS-English (https://huggingface.co/myshell-ai/MeloTTS-English)"
+            echo "license: MIT (code https://github.com/myshell-ai/MeloTTS/blob/main/LICENSE ; model cards declare MIT). Commercial use permitted."
+            echo "voices: ko narrator=KR speaker speed x1.0; ko app=KR speaker speed x1.08; en narrator=EN-US; en app=EN-BR"
+            echo "torch: $(python -c 'import torch;print(torch.__version__)') cpu; python $(python -V)"
+            echo "output: mono 16-bit PCM wav, 44100 Hz"
+          } > out/engine.txt
+          cat out/engine.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tts-out
+          path: out/

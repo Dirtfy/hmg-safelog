@@ -1,0 +1,8 @@
+[
+{"id":"k01","lang":"ko","voice":"narrator","text":"아침, 병원 가는 길입니다. 세이프로그를 켜고 출발합니다.","speed":1.0},
+{"id":"k02","lang":"ko","voice":"narrator","text":"차량이 급하게 멈추면 운전 기록이 자동으로 저장됩니다.","speed":1.0},
+{"id":"k03","lang":"ko","voice":"app","text":"충격이 감지되었습니다. 가족에게 알림을 보냈습니다.","speed":1.0},
+{"id":"k04","lang":"ko","voice":"narrator","text":"안전한 운전은 기록에서 시작됩니다.","speed":1.0},
+{"id":"e01","lang":"en","voice":"narrator","text":"Every drive is recorded, so help can arrive faster.","speed":1.0},
+{"id":"e02","lang":"en","voice":"app","text":"Impact detected. Your family has been notified.","speed":1.0}
+]
