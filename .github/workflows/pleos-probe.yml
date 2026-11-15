@@ -10,6 +10,9 @@ on:
       audio:
         description: 'record emulator audio output (pulseaudio null sink -> pleos-out/audio.wav)'
         default: 'false'
+      qemu_audio:
+        description: 'audio backend passed to qemu: none | wav (-> pleos-out/qemu_audio.wav) | pa'
+        default: 'none'
 
 jobs:
   probe:
@@ -80,7 +83,13 @@ jobs:
             nohup parec -d rec.monitor --rate=44100 --channels=1 --format=s16le --file-format=wav "$OUT/audio.wav" > "$OUT/parec.log" 2>&1 &
             AUD=""
           fi
-          nohup $ANDROID_HOME/emulator/emulator -avd pleos -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim $AUD -camera-back none -camera-front none -verbose > "$OUT/emulator.log" 2>&1 &
+          QA=""
+          case "${{ github.event.inputs.qemu_audio }}" in
+            wav) AUD=""; QA="-qemu -audiodev wav,id=snd0,path=$OUT/qemu_audio.wav" ;;
+            pa) AUD=""; QA="-qemu -audiodev pa,id=snd0,server=unix:/tmp/pulse.sock" ;;
+          esac
+          date +%s.%N > "$OUT/emu_start.txt"
+          nohup $ANDROID_HOME/emulator/emulator -avd pleos -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim $AUD -camera-back none -camera-front none -verbose $QA > "$OUT/emulator.log" 2>&1 &
           export PATH=$ANDROID_HOME/platform-tools:$PATH
           timeout 600 adb wait-for-device || { echo "no device" > "$OUT/boot.txt"; exit 0; }
           t=0; until [ "$(timeout 10 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ] || [ $t -ge 1200 ]; do sleep 5; t=$((t+5)); done
