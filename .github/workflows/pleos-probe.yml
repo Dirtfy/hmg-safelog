@@ -85,8 +85,9 @@ jobs:
           fi
           QA=""
           case "${{ github.event.inputs.qemu_audio }}" in
-            wav) AUD=""; QA="-qemu -audiodev wav,id=snd0,path=$OUT/qemu_audio.wav" ;;
-            pa) AUD=""; QA="-qemu -audiodev pa,id=snd0,server=unix:/tmp/pulse.sock" ;;
+            # 에뮬레이터의 qemu는 -audiodev를 모른다(옛 qemu) → 옛 방식 환경변수로 백엔드를 고른다
+            wav) AUD=""; export QEMU_AUDIO_DRV=wav QEMU_WAV_PATH=$OUT/qemu_audio.wav QEMU_WAV_FREQUENCY=48000 ;;
+            patcp) AUD=""; export QEMU_AUDIO_DRV=pa QEMU_PA_SERVER=127.0.0.1:4713 PULSE_SERVER=tcp:127.0.0.1:4713 ;;
           esac
           date +%s.%N > "$OUT/emu_start.txt"
           nohup $ANDROID_HOME/emulator/emulator -avd pleos -no-window -gpu swiftshader_indirect -no-snapshot -no-boot-anim $AUD -camera-back none -camera-front none -verbose $QA > "$OUT/emulator.log" 2>&1 &
