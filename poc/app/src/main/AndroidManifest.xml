@@ -20,7 +20,7 @@
     <application
         android:allowBackup="false"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:label="SafeLog PoC"
+        android:label="SafeLog"
         tools:ignore="MissingApplicationIcon">
 
         <uses-library android:name="android.car" android:required="false" />
@@ -28,10 +28,6 @@
         <activity
             android:name=".MainActivity"
             android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
         </activity>
 
         <!-- Demo mode: replays a scenario CSV through the real core engine. No Pleos SDK use. -->
@@ -51,6 +47,11 @@
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
             <!-- Pleos 주행 규제: DO(Distraction Optimized) 미선언 앱은 주행 중 화면이 막힌다. 주행 중 화면은 큰 글씨·음성 위주 -->
             <meta-data android:name="distractionOptimized" android:value="true" />
+            <!-- 앱 목록 아이콘은 라이브 모드(실제 Pleos SDK 신호)로 바로 연다 -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
 
         <service

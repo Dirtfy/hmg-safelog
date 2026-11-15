@@ -23,7 +23,9 @@ a dumpsys package $PKG | grep -E "versionName|versionCode|flags=|pkgFlags" > "$O
 $VC gear Park; $VC controls 0 0 100
 adb logcat -c
 timeout 300 adb logcat -v epoch > "$O/logcat.txt" 2>&1 &
-a am start -W -n $PKG/com.hmg.safelog.app.LiveActivity --ez route true > "$O/am_start.txt"
+# 심사위원처럼 앱 목록 아이콘(LAUNCHER)으로 연다
+a monkey -p $PKG -c android.intent.category.LAUNCHER 1 > "$O/am_start.txt"
+a cmd package resolve-activity --brief -c android.intent.category.LAUNCHER $PKG >> "$O/am_start.txt"
 sleep 20
 a pidof $PKG > "$O/pid.txt"
 timeout 30 adb exec-out screencap -p > "$O/r01_start.png"
@@ -39,4 +41,4 @@ timeout 30 adb exec-out screencap -p > "$O/r03_parked.png"
 a pidof $PKG >> "$O/pid.txt"
 sleep 2
 grep -E "SafeLog|AndroidRuntime|FATAL" "$O/logcat.txt" > "$O/logcat_safelog.txt"
-{ for k in LIVE_START SIG SPEAK EVENT_SAVED TRIP_SUMMARY FATAL; do echo "$k $(grep -c "$k" "$O/logcat_safelog.txt")"; done; } | tee "$O/summary.txt"
+{ grep -c "LiveActivity" "$O/am_start.txt" | sed "s/^/LAUNCHER_LIVE /"; for k in LIVE_START SIG SPEAK EVENT_SAVED TRIP_SUMMARY FATAL; do echo "$k $(grep -c "$k" "$O/logcat_safelog.txt")"; done; } | tee "$O/summary.txt"
