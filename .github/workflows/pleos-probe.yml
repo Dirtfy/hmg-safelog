@@ -13,6 +13,9 @@ on:
       qemu_audio:
         description: 'audio backend passed to qemu: none | wav (-> pleos-out/qemu_audio.wav) | pa'
         default: 'none'
+      lcd:
+        description: 'AVD screen WIDTHxHEIGHTxDPI (Pleos Connect v2.1.0 device definition: 2560x1440, mdpi=160)'
+        default: '1920x1080x120'
 
 jobs:
   probe:
@@ -62,7 +65,10 @@ jobs:
           rm -rf "$D/x86_64"; ln -s "$HOME/pleos/x/$SP" "$D/x86_64"
           ls -la "$D/x86_64/" | tee "$OUT/img_files.txt"
       - name: Update emulator + create AVD
-        run: bash poc/pleos/setup_avd.sh || true
+        run: |
+          IFS=x read LCD_W LCD_H LCD_DPI <<< "${{ github.event.inputs.lcd || '1920x1080x120' }}"
+          export LCD_W LCD_H LCD_DPI
+          bash poc/pleos/setup_avd.sh || true
       - name: Boot + run script
         run: |
           export ANDROID_AVD_HOME=$HOME/.android/avd
