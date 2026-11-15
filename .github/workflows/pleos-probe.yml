@@ -71,6 +71,10 @@ jobs:
             sudo apt-get update -qq > /dev/null 2>&1; sudo apt-get install -y -qq pulseaudio pulseaudio-utils > "$OUT/apt_audio.txt" 2>&1
             pulseaudio -D --exit-idle-time=-1 >> "$OUT/apt_audio.txt" 2>&1; sleep 2
             pactl load-module module-null-sink sink_name=rec sink_properties=device.description=rec >> "$OUT/apt_audio.txt" 2>&1
+            # 에뮬레이터에 들어 있는 libpulse가 쿠키 인증·기본 경로를 못 찾아 'pa' 드라이버 초기화에 실패했다 → 익명 TCP·유닉스 소켓을 열어 준다
+            pactl load-module module-native-protocol-unix auth-anonymous=1 socket=/tmp/pulse.sock >> "$OUT/apt_audio.txt" 2>&1
+            pactl load-module module-native-protocol-tcp auth-anonymous=1 port=4713 listen=127.0.0.1 >> "$OUT/apt_audio.txt" 2>&1
+            export PULSE_SERVER=unix:/tmp/pulse.sock QEMU_AUDIO_DRV=pa QEMU_PA_SERVER=unix:/tmp/pulse.sock
             pactl set-default-sink rec; pactl info > "$OUT/pactl_info.txt" 2>&1
             date +%s.%N > "$OUT/audio_start.txt"
             nohup parec -d rec.monitor --rate=44100 --channels=1 --format=s16le --file-format=wav "$OUT/audio.wav" > "$OUT/parec.log" 2>&1 &

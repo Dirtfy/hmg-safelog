@@ -19,9 +19,10 @@ timeout 900 adb logcat -v epoch > "$O/logcat.txt" 2>&1 &
 LC=$!
 a am start -W -n $PKG/com.hmg.safelog.app.LiveActivity > "$O/am_start.txt"
 sleep 20
-pactl list short sink-inputs > "$O/sink_inputs0.txt" 2>&1
+pactl list short sink-inputs > "$O/sink_inputs0.txt" 2>&1; pactl list short clients >> "$O/sink_inputs0.txt" 2>&1
 i=0
-while IFS= read -r line; do
+mapfile -t LINES < poc/pleos/say_lines.txt   # adb shell이 표준입력을 먹으므로 while-read를 쓰지 않는다
+for line in "${LINES[@]}"; do
   [ -z "$line" ] && continue
   i=$((i+1))
   for rep in 1 2; do
@@ -30,7 +31,7 @@ while IFS= read -r line; do
     n=${#line}; sleep $(( 6 + n / 5 ))
   done
   pactl list short sink-inputs >> "$O/sink_inputs.txt" 2>&1
-done < poc/pleos/say_lines.txt
+done
 echo "$(date +%s.%N) END" >> "$O/timeline.log"
 sleep 3
 kill $LC $HB 2>/dev/null
